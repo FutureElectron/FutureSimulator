@@ -326,6 +326,12 @@ void Widget::signalSlotsConnections()
 
     //--------------------------------- End of logging timers---------------------------------------//
 
+    // ---------------------------------TCP/IP Signals and slots ----------------------------------//
+    connect(&socket,&QTcpSocket::connected,this,&Widget::TCPConnected);
+    connect(&socket,&QTcpSocket::disconnected,this,&Widget::TCPdisconnected);
+    connect(&socket,&QTcpSocket::stateChanged,this,&Widget::stateChanged);
+    connect(&socket,&QTcpSocket::readyRead,this,&Widget::TCPReceiveData);
+    connect(&socket,&QTcpSocket::errorOccurred,this,&Widget::error);
 
 }
 
@@ -337,15 +343,15 @@ void Widget::connectSerial()
     QPixmap iconDisconnect {":/16x16/disconnect.png"};
     QIcon iDisconnect {iconDisconnect};
     serial.setPortName(port);
-    portConfiguration();
+    serialPortConfiguration();
     serial.open(QIODevice::ReadWrite);
 
 
-    if(!serial.isOpen())
+    if(!serial.isOpen() || !socket.isOpen() )
     {
         ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(255, 6, 31);");
         QMessageBox::information(this,"Connection Error","Connect to one of the "
-                                                         "available ports by clicking on the settings button");
+                                                         "available ports or Host by clicking on the settings button");
         connected = false;
         //return;
     }
@@ -365,10 +371,10 @@ void Widget::connectSerial()
         qDebug()<<"connected to serial port";
     }
 
-
     if(connected && !btnToggle){
        qDebug()<<"Disconnected serial port";
       serial.close();
+      disconnectTCP();
       ui->connectBtn->setText("Connect");
       ui->connectBtn->setIcon(iDisconnect);
       ui->loggerBaseFrame->setEnabled(false);
@@ -412,7 +418,7 @@ void Widget::adjustTable()
 
 }
 
-void Widget::portConfiguration()
+void Widget::serialPortConfiguration()
 {
     // databits
     if(dataBits == "5 Bits") {
@@ -724,7 +730,10 @@ void Widget::showConfigDialog()
         parity = c->getParity();
         flowControl = c->getFlowControl();
         opMode = c->getOpMode();
-
+        ipaddress = c->getIpaddr();
+        tcpPort = c->getTcpPort();
+        tcpActive = c->getTCPActive();
+        serialActive = c->getSerialActvie();
         //Enable the connect button now
         ui->connectBtn->setEnabled(true);
     }
@@ -820,7 +829,7 @@ void Widget::readSerialData()
 {
 
     if(!future.isRunning())
-        future = QtConcurrent::run(&Widget::receiveData, this);
+        future = QtConcurrent::run(&Widget::serialReceiveData, this);
     future.waitForFinished();
 }
 
@@ -844,7 +853,55 @@ void Widget::classification()
 
 }
 
-void Widget::receiveData()
+void Widget::TCPConnectToHost(QString host, quint16 port)
+{
+    // modify GUI file before doing this
+    socket.connectToHost(ipaddress,tcpPort);
+}
+
+void Widget::disconnectTCP()
+{
+
+    if (socket.isOpen())
+    {
+        socket.close();
+        socket.waitForDisconnected();
+    }
+}
+
+void Widget::TCPConnected()
+{
+    qInfo()<<"Connected";
+    ui->connectionLabel->setText(QString("TCP Connection established at %1"
+                                         " and port: %2").arg(socket.peerAddress().toString()).arg(socket.peerPort()));
+}
+
+void Widget::TCPdisconnected()
+{
+    qInfo()<<"Disconnected";
+    ui->connectionLabel->setText("Disconnected. Configure valid connection or click on the connect button");
+}
+
+void Widget::error(QAbstractSocket::SocketError socketError)
+{
+    qWarning() << "Error:" << socketError << " " << socket.errorString();
+    ui->connectionLabel->setText(QString("Error: %1 %2").arg(socketError).arg(socket.errorString()));
+}
+
+void Widget::stateChanged(QAbstractSocket::SocketState socketState)
+{
+    QMetaEnum metaEnum = QMetaEnum::fromType<QAbstractSocket::SocketState>();
+    qInfo() << "State:" << metaEnum.valueToKey(socketState);
+    ui->connectionLabel->setText(QString("State: %1").arg(metaEnum.valueToKey(socketState)));
+}
+
+void Widget::TCPReceiveData()
+{
+    //Will only be used if we want to receive a feedback
+    ui->plainTextEdit->setPlainText(socket.readAll());
+}
+
+void Widget::serialReceiveData()
 {
     QByteArray rawData = serial.readAll();
 

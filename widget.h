@@ -19,6 +19,9 @@
 #include <QtConcurrent>
 #include <QFuture>
 #include <QInputDialog>
+#include <QTcpSocket>
+#include <QAbstractSocket>
+#include <QMetaEnum>
 //#include <QEventLoop>
 //#include <QFutureWatcher>
 
@@ -34,7 +37,7 @@ public:
     Widget(QWidget *parent = nullptr);
     void signalSlotsConnections();
 //    void connectSerial();
-    void portConfiguration();
+    void serialPortConfiguration();
     void sendCommandLine();
     void saveSettings();
     bool loadSettings();
@@ -52,7 +55,7 @@ public:
     void selectClassificationClass();
     void sendCommand(QString cmd);
     void sendClassificationPattern(int seconds);
-    void receiveData();
+    void serialReceiveData();
     ~Widget();
 
  signals:
@@ -66,10 +69,21 @@ public slots:
     void adjustTable();
     void readSerialData();
     void classification();
+    void TCPConnectToHost(QString host, quint16 port);
+    void disconnectTCP();
+
+private slots:
+    void TCPConnected();
+    void TCPdisconnected();
+    void error(QAbstractSocket::SocketError socketError);
+    void stateChanged(QAbstractSocket::SocketState socketState);
+    void TCPReceiveData();
 
 
 private:
     Ui::Widget *ui;
+    QString ipaddress;
+    quint16 tcpPort;
     QString port;
     QString mes;
     QString baudRate;
@@ -81,8 +95,10 @@ private:
     QString opMode;
     QSerialPort serial;
     QSerialPortInfo info;
-    bool connected {false}, logging{false};
+    bool connected {false};
+    bool logging{false};
     bool enableOutput {true};
+    bool serialActive, tcpActive;
     QString buffer, lastcommand;
     bool settingsSaved{false};
     QString logfolderPath;
@@ -93,6 +109,7 @@ private:
     int logtime{50};
 
     QProcess *proc = new QProcess(this);
+    QTcpSocket socket;
 
     struct Signal
     {

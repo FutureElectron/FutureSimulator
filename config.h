@@ -23,7 +23,15 @@ public:
     QString getFlowControl() const;
     QString getOpMode() const;
 
-  public slots:
+    QString getIpaddr() const;
+    quint16 getTcpPort() const;
+
+    Ui::Config *getUi() const;
+    QString getOperatingMode() const;
+    bool getTCPActive() const;
+    bool getSerialActvie() const;
+
+public slots:
     void setvalues(void);
 
 private:
@@ -35,6 +43,12 @@ private:
     QString parity;
     QString flowControl;
     QString operatingMode;
+    QString ipaddr;
+    quint16 tcpPort;
+    bool TCPActive = false;
+    bool serialActvie = false;
+    Q_PROPERTY(QString ipaddr READ getIpaddr CONSTANT)
+    Q_PROPERTY(QString tcpPort READ getTcpPort CONSTANT)
 };
 
 #endif // CONFIG_H
