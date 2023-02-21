@@ -43,8 +43,8 @@ private:
     QString parity;
     QString flowControl;
     QString operatingMode;
-    QString ipaddr;
-    quint16 tcpPort;
+    QString ipaddr = "192.168.0.10";
+    quint16 tcpPort=10000;
     bool TCPActive = false;
     bool serialActvie = false;
     Q_PROPERTY(QString ipaddr READ getIpaddr CONSTANT)

@@ -22,6 +22,7 @@
 #include <QTcpSocket>
 #include <QAbstractSocket>
 #include <QMetaEnum>
+#include <QTcpServer>
 //#include <QEventLoop>
 //#include <QFutureWatcher>
 
@@ -56,6 +57,7 @@ public:
     void sendCommand(QString cmd);
     void sendClassificationPattern(int seconds);
     void serialReceiveData();
+    void TCPServerConnection(QString host, quint16 port);
     ~Widget();
 
  signals:
@@ -63,21 +65,23 @@ public:
 
 public slots:
     void showConfigDialog();
-    void sendSliderPWM();
+    void sendPWMFromSlider();
     void connectSerial();
-    void restartLogging();
-    void adjustTable();
+    void uiRestartLogging();
+    void uiAdjustTable();
     void readSerialData();
     void classification();
     void TCPConnectToHost(QString host, quint16 port);
-    void disconnectTCP();
+    void TCPDisconnect();
 
 private slots:
-    void TCPConnected();
+    void TCPConnectionSuccessful();
     void TCPdisconnected();
-    void error(QAbstractSocket::SocketError socketError);
-    void stateChanged(QAbstractSocket::SocketState socketState);
+    void TCPConnectionError(QAbstractSocket::SocketError socketError);
+    void TCPStateChanged(QAbstractSocket::SocketState socketState);
     void TCPReceiveData();
+    void connectionHandler(void);
+    void serverHasNewConnection();
 
 
 private:
@@ -95,10 +99,11 @@ private:
     QString opMode;
     QSerialPort serial;
     QSerialPortInfo info;
+    QString lastConnectionState;
     bool connected {false};
     bool logging{false};
     bool enableOutput {true};
-    bool serialActive, tcpActive;
+    bool serialActive{false}, tcpActive{false};
     QString buffer, lastcommand;
     bool settingsSaved{false};
     QString logfolderPath;
@@ -127,7 +132,7 @@ private:
     Signal classSignal;
     Signal selectedClassSignal;
     QMap<QString, Signal> sigVals;
-
+    QFuture<void> future;
     QString inActiveBtnStyle = R"(
             QToolButton{
                 border:1px solid;
@@ -153,8 +158,11 @@ private:
             }
         )";
 
-    // ------------
-    QFuture<void> future;
+    QTcpServer *server ;
+
+    void uiConnectionSuccessful(QString msg, QString connectionType);
+    void uiDisconnectionSuccessful(QString msg, QString connectionType);
+    bool serialConnected{false}, TCPConnected {false};
 
 };
 #endif // WIDGET_H

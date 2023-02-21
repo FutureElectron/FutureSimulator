@@ -21,11 +21,15 @@ Widget::Widget(QWidget *parent)
     ui->homeBtn->setStyleSheet(activeBtnStyle);
     ui->NormalSignalTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
+    //TCP Server
+    server = new QTcpServer(this);
+    connect(server, SIGNAL(newConnection()), this, SLOT(serverHasNewConnection()));
+    TCPServerConnection(ipaddress, tcpPort);
 }
 
 void Widget::signalSlotsConnections()
 {
-    connect(ui->horizontalSlider, &QSlider::sliderMoved, this, &Widget::sendSliderPWM);
+    connect(ui->horizontalSlider, &QSlider::sliderMoved, this, &Widget::sendPWMFromSlider);
     connect(&serial, &QSerialPort::readyRead, this, &Widget::readSerialData,  Qt::QueuedConnection);
 
     // ------------------------------Button connections-------------------------------------------//
@@ -137,10 +141,10 @@ void Widget::signalSlotsConnections()
     // ------------------------------ End of logging buttons-------------------------------------//
 
     // --------------------------------Other control buttons------------------------------------//
-    connect(ui->adjustTableBtn,&QPushButton::clicked, this, &Widget::adjustTable);
-    connect(ui->resetLogginBtn,&QPushButton::clicked, this, &Widget::restartLogging);
+    connect(ui->adjustTableBtn,&QPushButton::clicked, this, &Widget::uiAdjustTable);
+    connect(ui->resetLogginBtn,&QPushButton::clicked, this, &Widget::uiRestartLogging);
     connect(ui->settingsBtn,&QToolButton::clicked,this,&Widget::showConfigDialog);
-    connect(ui->connectBtn,&QToolButton::clicked,this, &Widget::connectSerial);
+    connect(ui->connectBtn,&QToolButton::clicked,this, &Widget::connectionHandler);
     connect(ui->clearOutputBtn, &QToolButton::clicked, this, [=](){
         ui->plainTextEdit->clear();
     });
@@ -327,11 +331,11 @@ void Widget::signalSlotsConnections()
     //--------------------------------- End of logging timers---------------------------------------//
 
     // ---------------------------------TCP/IP Signals and slots ----------------------------------//
-    connect(&socket,&QTcpSocket::connected,this,&Widget::TCPConnected);
+    connect(&socket,&QTcpSocket::connected,this,&Widget::TCPConnectionSuccessful);
     connect(&socket,&QTcpSocket::disconnected,this,&Widget::TCPdisconnected);
-    connect(&socket,&QTcpSocket::stateChanged,this,&Widget::stateChanged);
+    connect(&socket,&QTcpSocket::stateChanged,this,&Widget::TCPStateChanged);
     connect(&socket,&QTcpSocket::readyRead,this,&Widget::TCPReceiveData);
-    connect(&socket,&QTcpSocket::errorOccurred,this,&Widget::error);
+    connect(&socket,&QTcpSocket::errorOccurred,this,&Widget::TCPConnectionError);
 
 }
 
@@ -374,7 +378,7 @@ void Widget::connectSerial()
     if(connected && !btnToggle){
        qDebug()<<"Disconnected serial port";
       serial.close();
-      disconnectTCP();
+      TCPDisconnect();
       ui->connectBtn->setText("Connect");
       ui->connectBtn->setIcon(iDisconnect);
       ui->loggerBaseFrame->setEnabled(false);
@@ -384,7 +388,7 @@ void Widget::connectSerial()
     }
 }
 
-void Widget::restartLogging()
+void Widget::uiRestartLogging()
 {
     ui->folderPathLabel->clear();
     ui->stepOneCheck->clear();
@@ -397,7 +401,7 @@ void Widget::restartLogging()
     ui->NormalSignalTable->clear();
 }
 
-void Widget::adjustTable()
+void Widget::uiAdjustTable()
 {
     int numberOfSpuriousSignals = ui->numberAbSpuriousSignal->value();
     int currentNumberOfColumns = ui->NormalSignalTable->columnCount();
@@ -420,6 +424,9 @@ void Widget::adjustTable()
 
 void Widget::serialPortConfiguration()
 {
+    // set port name
+    serial.setPortName(port);
+
     // databits
     if(dataBits == "5 Bits") {
            serial.setDataBits(QSerialPort::Data5);
@@ -494,6 +501,9 @@ void Widget::saveSettings()
     settings.setValue("parity",QVariant(parity));
     settings.setValue("flowcontrol",QVariant(flowControl));
     settings.setValue("opmode", QVariant(opMode));
+    settings.setValue("lastConnectionState", QVariant(lastConnectionState));
+    settings.setValue("tcpPort", QVariant(tcpPort));
+    settings.setValue("ipadrress", QVariant(ipaddress));
     int result = settings.status();
     if (result ==QSettings::NoError && !settingsSaved )
         settingsSaved = true;
@@ -520,6 +530,10 @@ bool Widget::loadSettings()
      parity = returnValue["parity"];
      flowControl = returnValue["flowcontrol"];
      opMode = returnValue["opmode"];
+     lastConnectionState = returnValue["lastConnectionState"];
+     tcpPort = returnValue["tcpPort"].toInt();
+     ipaddress = returnValue["ipadrress"];
+     qInfo()<<lastConnectionState;
      if(opMode=="Anomaly Detection")
      {
          ui->classificationBtn->setEnabled(false);
@@ -532,7 +546,12 @@ bool Widget::loadSettings()
         ui->learnCmdBtn->setEnabled(false);
         ui->inferCmdBtn->setEnabled(false);
      }
+
+     if (lastConnectionState == "Serial") serialActive=true;
+     if (lastConnectionState == "TCP") tcpActive = true;
+
      return true;
+
 }
 
 void Widget::NormalSignalGenerator()
@@ -704,7 +723,7 @@ void Widget::abnormalSignalGenerator(int seconds)
 
 }
 
-void Widget::sendSliderPWM()
+void Widget::sendPWMFromSlider()
 {
     // send the horizontal slider value as a duty cycle to the controller
     QString val = "PWM **%";
@@ -753,7 +772,6 @@ void Widget::showConfigDialog()
         ui->inferCmdBtn->setEnabled(true);
     }
 }
-
 
 void Widget::openFileInExplorer()
 {
@@ -856,39 +874,46 @@ void Widget::classification()
 void Widget::TCPConnectToHost(QString host, quint16 port)
 {
     // modify GUI file before doing this
-    socket.connectToHost(ipaddress,tcpPort);
+    if(socket.isOpen()) disconnect();
+    qInfo() << "Connecting to: " << host << " on port " << port;
+    socket.connectToHost(host,port);
 }
 
-void Widget::disconnectTCP()
+void Widget::TCPDisconnect()
 {
 
     if (socket.isOpen())
     {
         socket.close();
         socket.waitForDisconnected();
+
     }
 }
 
-void Widget::TCPConnected()
+void Widget::TCPConnectionSuccessful()
 {
-    qInfo()<<"Connected";
-    ui->connectionLabel->setText(QString("TCP Connection established at %1"
-                                         " and port: %2").arg(socket.peerAddress().toString()).arg(socket.peerPort()));
+    qInfo()<<"Connected to "<<ipaddress<<"on port: "<<tcpPort;
+    TCPConnected = true;
+    QString msg = QString("TCP Connection established to %1"
+                          " and port: %2").arg(ipaddress).arg(socket.peerPort());
+
+    uiConnectionSuccessful(msg,"TCP");
 }
 
 void Widget::TCPdisconnected()
 {
-    qInfo()<<"Disconnected";
-    ui->connectionLabel->setText("Disconnected. Configure valid connection or click on the connect button");
+    TCPConnected = false;
+    qInfo()<<"TCP Disconnected";
+    uiDisconnectionSuccessful("Disconnected. Configure valid connection or click on the connect button", "TCP");
 }
 
-void Widget::error(QAbstractSocket::SocketError socketError)
+void Widget::TCPConnectionError(QAbstractSocket::SocketError socketError)
 {
-    qWarning() << "Error:" << socketError << " " << socket.errorString();
-    ui->connectionLabel->setText(QString("Error: %1 %2").arg(socketError).arg(socket.errorString()));
+    qWarning() << "Error:" <<" " << socket.errorString();
+    ui->connectionLabel->setText(QString("Error: %1 ").arg(socket.errorString()));
 }
 
-void Widget::stateChanged(QAbstractSocket::SocketState socketState)
+void Widget::TCPStateChanged(QAbstractSocket::SocketState socketState)
 {
     QMetaEnum metaEnum = QMetaEnum::fromType<QAbstractSocket::SocketState>();
     qInfo() << "State:" << metaEnum.valueToKey(socketState);
@@ -899,6 +924,111 @@ void Widget::TCPReceiveData()
 {
     //Will only be used if we want to receive a feedback
     ui->plainTextEdit->setPlainText(socket.readAll());
+}
+
+void Widget::connectionHandler()
+{
+    static bool attemptToConnect{false};
+    attemptToConnect = !attemptToConnect;
+
+    if(attemptToConnect)
+    {
+        
+        if (tcpActive)
+        {
+            /*
+             * TCP server has to listen first
+            TCP Connection is asynchronous and uses signals and slots so there is no need for 
+            deciding to update UI or handle connection parameters. Check TCPConnected or TCPDisconnected Slots
+            as these handle events regarding change of states.
+            */
+            //Listen on the specified port
+
+            qInfo()<<"TCP is active:"<<tcpActive;
+            qInfo()<<"connection iP is:"<<ipaddress;
+            TCPConnectToHost(ipaddress,tcpPort);
+            //check for successful connection
+
+        }
+
+        // serial connection
+        if (serialActive)
+        {
+            serialPortConfiguration();
+            serial.open(QIODevice::ReadWrite);
+            if(serial.isOpen())
+            {
+                serialConnected = true;
+                QString msg = "Connected to %1   Baud:%2 bps   Parity: %3   Stop Bits: %4   Mode: %5";
+                msg = msg.arg(port,baudRate,parity,stopBits,opMode);
+                uiConnectionSuccessful(msg,"Serial");
+                lastConnectionState = "Serial";
+                saveSettings();
+            }
+            else
+            {
+                serialConnected = false;
+                QMessageBox::information(this,"Connection Error","Connect to one of the "
+                                                                 "available ports or Host by clicking on the settings button");
+                uiDisconnectionSuccessful("Not connected. Click on the settings button to configure connection", "serial");
+            }
+        }
+
+        // Fresh run, no configuration has been done in the past
+        if(lastConnectionState =="")
+        {
+            QMessageBox::information(this,"Connection Error","Connect to one of the "
+                                                             "available ports or Host by clicking on the settings button");
+        }
+
+
+    }
+    else
+    {
+        // Disconnect all open connections
+        if(serialConnected) serial.close();
+        if(TCPConnected) TCPDisconnect();
+        uiDisconnectionSuccessful("No active Connection. Click on Settings to configure","TCP/Serial");
+    }
+}
+
+void Widget::serverHasNewConnection()
+{
+    //Getting Client Connection
+    QTcpSocket *soc =new QTcpSocket(this);
+    soc = server->nextPendingConnection();
+    //Connect the signal slot of the QTcpSocket to read the new data
+//    QObject::connect(socket, &QTcpSocket::readyRead, this, &MainWindow::socket_Read_Data);
+//    QObject::connect(socket, &QTcpSocket::disconnected, this, &MainWindow::socket_Disconnected);
+
+    qDebug() << "A Client connect!";
+}
+
+void Widget::uiConnectionSuccessful(QString msg, QString connectionType)
+{
+    QPixmap iconConnect {":/16x16/connection.png"};
+    QIcon iConnect(iconConnect);
+    ui->connectBtn->setText("Disconnect");
+    ui->connectBtn->setIcon(iConnect);
+    ui->loggerBaseFrame->setEnabled(true);
+    ui->homepageframe->setEnabled(true);
+    ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(0, 255, 5);");
+    qDebug()<<"Connected " + connectionType + " port";
+    ui->connectionLabel->setText(msg);
+    saveSettings();
+}
+
+void Widget::uiDisconnectionSuccessful(QString msg, QString connectionType)
+{
+    QPixmap iconDisconnect {":/16x16/disconnect.png"};
+    QIcon iDisconnect {iconDisconnect};
+    qDebug()<<"Disconnected " <<connectionType<<" port";
+    ui->connectBtn->setText("Connect");
+    ui->connectBtn->setIcon(iDisconnect);
+    ui->loggerBaseFrame->setEnabled(false);
+    ui->homepageframe->setEnabled(false);
+    ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(255, 0, 5);");
+    ui->connectionLabel->setText("Not connected. Check settings or click on the connect button");
 }
 
 void Widget::serialReceiveData()
@@ -963,6 +1093,21 @@ void Widget::serialReceiveData()
         }
 
     }
+}
+
+void Widget::TCPServerConnection(QString host, quint16 port)
+{
+    if(!server->listen(QHostAddress(host), tcpPort))
+    {
+        //If an error occurs, the error message is output
+        qDebug()<<server->errorString();
+        return;
+    }
+    else
+      {
+        qInfo()<<"Connected to server";
+
+      }
 }
 
 Widget::~Widget()
