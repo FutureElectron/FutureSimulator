@@ -23,6 +23,8 @@
 #include <QAbstractSocket>
 #include <QMetaEnum>
 #include <QTcpServer>
+#include <QUdpSocket>
+#include <QNetworkDatagram>
 //#include <QEventLoop>
 //#include <QFutureWatcher>
 
@@ -66,13 +68,13 @@ public:
 public slots:
     void showConfigDialog();
     void sendPWMFromSlider();
-    void connectSerial();
     void uiRestartLogging();
     void uiAdjustTable();
     void readSerialData();
     void classification();
     void TCPConnectToHost(QString host, quint16 port);
     void TCPDisconnect();
+    void UDPreadyRead();
 
 private slots:
     void TCPConnectionSuccessful();
@@ -86,8 +88,8 @@ private slots:
 
 private:
     Ui::Widget *ui;
-    QString ipaddress;
-    quint16 tcpPort;
+    QString ipaddress="192.168.0.10";
+    quint16 tcpPort=1234;
     QString port;
     QString mes;
     QString baudRate;
@@ -114,15 +116,13 @@ private:
     int logtime{50};
 
     QProcess *proc = new QProcess(this);
-    QTcpSocket socket;
+
+    QTcpSocket TCPSocket;
+    QUdpSocket UDPSocket;
+    QTcpServer *server ;
 
     struct Signal
     {
-//        Signal(QList<int> p, QList<int> t) {
-//            pwm = p;
-//            timestamps = t;
-//        }
-
         QList<int> pwm;
         QList<int> timestamps;
         int basePWM;
@@ -158,10 +158,10 @@ private:
             }
         )";
 
-    QTcpServer *server ;
 
-    void uiConnectionSuccessful(QString msg, QString connectionType);
-    void uiDisconnectionSuccessful(QString msg, QString connectionType);
+
+    void uiConnectionSuccessful(QString msg);
+    void uiDisconnectionSuccessful(QString msg);
     bool serialConnected{false}, TCPConnected {false};
 
 };

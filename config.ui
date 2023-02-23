@@ -65,7 +65,7 @@ QTabBar::tab:!selected {
 }</string>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="serialtab">
       <attribute name="title">
@@ -83,7 +83,7 @@ QTabBar::tab:!selected {
           <string>Set as active connection</string>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>

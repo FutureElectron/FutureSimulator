@@ -43,7 +43,7 @@ Config::~Config()
 
 QString Config::getPort() const
 {
-    return port;
+    return serialPort;
 }
 
 QString Config::getBaudRate() const
@@ -81,7 +81,7 @@ void Config::setvalues()
 
     if(ui->setSerialActive->isChecked())
     {
-        port = ui->portCombo->currentText();
+        serialPort = ui->portCombo->currentText();
         baudRate = ui->baudrateCombo->currentText();
         dataBits = ui->baudrateCombo->currentText();
         stopBits = ui->stopbitsCombo->currentText();
@@ -95,6 +95,7 @@ void Config::setvalues()
 
     if (ui->setTCPActive->isChecked())
     {
+        TCPActive = ui->setTCPActive->isChecked();
         QString IpRange = "(?:[0-1]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])";
         QRegularExpression IpRegex ("^" + IpRange
                                     + "(\\." + IpRange + ")"
@@ -105,7 +106,7 @@ void Config::setvalues()
         int pos{0};
         QString tmp_ipaddr = ui->ipaddr->text();
 
-        bool acceptedIP{false}, acceptedPort{false};
+
         if (ipValidator->validate(tmp_ipaddr,pos) !=2)
         {
             QMessageBox::warning(this,"Invalid IP Address", "Please enter a valid IP address! "
@@ -127,7 +128,6 @@ void Config::setvalues()
         if(portValidator->validate(tmp_tcpport,pos)==2)
         {
             tcpPort = tmp_tcpport.toInt();
-            TCPActive = ui->setTCPActive->isChecked();
             acceptedPort = true;
         }
         else
@@ -139,9 +139,75 @@ void Config::setvalues()
             ui->tcp_port->setText("");
         }
 
-        if(acceptedIP && acceptedPort)
-            accept();
     }
+    if (configValidation())
+        accept();
+}
+
+void Config::setPort(const QString &newPort)
+{
+    serialPort = newPort;
+    ui->portCombo->setCurrentText(newPort);
+}
+
+void Config::setIpaddr(const QString &newIpaddr)
+{
+    ipaddr = newIpaddr;
+    ui->ipaddr->setText(ipaddr);
+}
+
+void Config::setBaudRate(const QString &newBaudRate)
+{
+    baudRate = newBaudRate;
+    ui->baudrateCombo->setCurrentText(newBaudRate);
+}
+
+void Config::setDataBits(const QString &newDataBits)
+{
+    dataBits = newDataBits;
+    ui->databitsCombo->setCurrentText(newDataBits);
+}
+
+void Config::setStopBits(const QString &newStopBits)
+{
+    stopBits = newStopBits;
+    ui->stopbitsCombo->setCurrentText(newStopBits);
+}
+
+void Config::setParity(const QString &newParity)
+{
+    parity = newParity;
+    ui->parityCombo->setCurrentText(newParity);
+}
+
+void Config::setFlowControl(const QString &newFlowControl)
+{
+    flowControl = newFlowControl;
+    ui->flowcontrolCombo->setCurrentText(newFlowControl);
+}
+
+void Config::setOperatingMode(const QString &newOperatingMode)
+{
+    operatingMode = newOperatingMode;
+    ui->modeCombo->setCurrentText(newOperatingMode);
+}
+
+void Config::setTCPActive(bool newTCPActive)
+{
+    TCPActive = newTCPActive;
+    ui->setTCPActive->setChecked(newTCPActive);
+}
+
+void Config::setSerialActvie(const bool newSerialActvie)
+{
+    serialActvie = newSerialActvie;
+    ui->setSerialActive->setChecked(newSerialActvie);
+}
+
+void Config::setTCPPort(const QString newTCPPort)
+{
+//    tcpPort = newTCPPort;
+    ui->tcp_port->setText(newTCPPort);
 }
 
 Ui::Config *Config::getUi() const
@@ -163,6 +229,27 @@ bool Config::getSerialActvie() const
 {
 
     return serialActvie;
+}
+
+bool Config::configValidation()
+{
+    // First check if any option is selected already and return if false
+    if (!ui->setSerialActive->isChecked() && !serialActvie)
+    {
+        QMessageBox::warning(this,"Protocol Error", "No Protocol is selected. "
+                                                    "Please select a vailid protocol to proceed...",QMessageBox::Ok);
+        return false;
+    }
+    return true;
+//    bool ipvalidation {false};
+//    if (TCPActive)
+//        if (acceptedIP && acceptedPort) ipvalidation = true;
+
+
+//    if (ipvalidation && (TCPActive || serialActvie))
+//        return true;
+//    else
+//        return false;
 }
 
 QString Config::getIpaddr() const

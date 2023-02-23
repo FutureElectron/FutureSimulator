@@ -331,61 +331,15 @@ void Widget::signalSlotsConnections()
     //--------------------------------- End of logging timers---------------------------------------//
 
     // ---------------------------------TCP/IP Signals and slots ----------------------------------//
-    connect(&socket,&QTcpSocket::connected,this,&Widget::TCPConnectionSuccessful);
-    connect(&socket,&QTcpSocket::disconnected,this,&Widget::TCPdisconnected);
-    connect(&socket,&QTcpSocket::stateChanged,this,&Widget::TCPStateChanged);
-    connect(&socket,&QTcpSocket::readyRead,this,&Widget::TCPReceiveData);
-    connect(&socket,&QTcpSocket::errorOccurred,this,&Widget::TCPConnectionError);
+    connect(&TCPSocket,&QTcpSocket::connected,this,&Widget::TCPConnectionSuccessful);
+    connect(&TCPSocket,&QTcpSocket::disconnected,this,&Widget::TCPdisconnected);
+    connect(&TCPSocket,&QTcpSocket::stateChanged,this,&Widget::TCPStateChanged);
+    connect(&TCPSocket,&QTcpSocket::readyRead,this,&Widget::TCPReceiveData);
+    connect(&TCPSocket,&QTcpSocket::errorOccurred,this,&Widget::TCPConnectionError);
 
-}
+    //-------------------------------------UDP Connections----------------------------------------//
+    connect(&UDPSocket,&QUdpSocket::readyRead,this,&Widget::UDPreadyRead);
 
-void Widget::connectSerial()
-{
-    static bool btnToggle = false;
-    btnToggle = !btnToggle;
-
-    QPixmap iconDisconnect {":/16x16/disconnect.png"};
-    QIcon iDisconnect {iconDisconnect};
-    serial.setPortName(port);
-    serialPortConfiguration();
-    serial.open(QIODevice::ReadWrite);
-
-
-    if(!serial.isOpen() || !socket.isOpen() )
-    {
-        ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(255, 6, 31);");
-        QMessageBox::information(this,"Connection Error","Connect to one of the "
-                                                         "available ports or Host by clicking on the settings button");
-        connected = false;
-        //return;
-    }
-    else{
-        QPixmap iconConnect {":/16x16/connection.png"};
-        QIcon iConnect(iconConnect);
-        ui->connectBtn->setText("Disconnect");
-        ui->connectBtn->setIcon(iConnect);
-        ui->loggerBaseFrame->setEnabled(true);
-        ui->homepageframe->setEnabled(true);
-        ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(0, 255, 5);");
-        QString val = "Connected to %1   Baud:%2 bps   Parity: %3   Stop Bits: %4   Mode: %5";
-        val = val.arg(port,baudRate,parity,stopBits,opMode);
-        ui->connectionLabel->setText(val);
-        saveSettings();
-        connected = true;
-        qDebug()<<"connected to serial port";
-    }
-
-    if(connected && !btnToggle){
-       qDebug()<<"Disconnected serial port";
-      serial.close();
-      TCPDisconnect();
-      ui->connectBtn->setText("Connect");
-      ui->connectBtn->setIcon(iDisconnect);
-      ui->loggerBaseFrame->setEnabled(false);
-      ui->homepageframe->setEnabled(false);
-      ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(255, 0, 5);");
-      ui->connectionLabel->setText("Not connected. Check settings or click on the connect button");
-    }
 }
 
 void Widget::uiRestartLogging()
@@ -533,7 +487,7 @@ bool Widget::loadSettings()
      lastConnectionState = returnValue["lastConnectionState"];
      tcpPort = returnValue["tcpPort"].toInt();
      ipaddress = returnValue["ipadrress"];
-     qInfo()<<lastConnectionState;
+     //qInfo()<<lastConnectionState;
      if(opMode=="Anomaly Detection")
      {
          ui->classificationBtn->setEnabled(false);
@@ -547,8 +501,17 @@ bool Widget::loadSettings()
         ui->inferCmdBtn->setEnabled(false);
      }
 
-     if (lastConnectionState == "Serial") serialActive=true;
-     if (lastConnectionState == "TCP") tcpActive = true;
+     if (lastConnectionState == "Serial")
+     {
+         serialActive=true;
+         tcpActive =false;
+     }
+
+     if (lastConnectionState == "TCP")
+     {
+         tcpActive = true;
+         serialActive=false;
+     }
 
      return true;
 
@@ -739,6 +702,20 @@ void Widget::showConfigDialog()
 {
     // Get the configuration parameters from the user
     Config *c = new Config(this);
+    c->setIpaddr(ipaddress);
+    c->setPort(port);
+    c->setBaudRate(baudRate);
+    c->setDataBits(dataBits);
+    c->setStopBits(stopBits);
+    c->setFlowControl(flowControl);
+    c->setOperatingMode(opMode);
+    c->setSerialActvie(serialActive);
+    qInfo()<<"serial active?" << serialActive;
+    c->setTCPActive(tcpActive);
+    qInfo()<<"TCP active?" << tcpActive;
+    c->setParity(parity);
+    c->setTCPPort(QString::number(tcpPort));
+
     int ret = c->exec();
     if(ret==QDialog::Accepted)
     {
@@ -752,6 +729,8 @@ void Widget::showConfigDialog()
         ipaddress = c->getIpaddr();
         tcpPort = c->getTcpPort();
         tcpActive = c->getTCPActive();
+        qInfo()<<"tcp: "<<tcpActive;
+        qInfo() <<"serial: "<<serialActive;
         serialActive = c->getSerialActvie();
         //Enable the connect button now
         ui->connectBtn->setEnabled(true);
@@ -874,20 +853,25 @@ void Widget::classification()
 void Widget::TCPConnectToHost(QString host, quint16 port)
 {
     // modify GUI file before doing this
-    if(socket.isOpen()) disconnect();
+    if(TCPSocket.isOpen()) disconnect();
     qInfo() << "Connecting to: " << host << " on port " << port;
-    socket.connectToHost(host,port);
+    TCPSocket.connectToHost(host,port);
 }
 
 void Widget::TCPDisconnect()
 {
 
-    if (socket.isOpen())
+    if (TCPSocket.isOpen())
     {
-        socket.close();
-        socket.waitForDisconnected();
+        TCPSocket.close();
+        TCPSocket.waitForDisconnected();
 
     }
+}
+
+void Widget::UDPreadyRead()
+{
+
 }
 
 void Widget::TCPConnectionSuccessful()
@@ -895,22 +879,23 @@ void Widget::TCPConnectionSuccessful()
     qInfo()<<"Connected to "<<ipaddress<<"on port: "<<tcpPort;
     TCPConnected = true;
     QString msg = QString("TCP Connection established to %1"
-                          " and port: %2").arg(ipaddress).arg(socket.peerPort());
+                          " and port: %2").arg(ipaddress).arg(TCPSocket.peerPort());
+    lastConnectionState="TCP";
 
-    uiConnectionSuccessful(msg,"TCP");
+    uiConnectionSuccessful(msg);
 }
 
 void Widget::TCPdisconnected()
 {
     TCPConnected = false;
     qInfo()<<"TCP Disconnected";
-    uiDisconnectionSuccessful("Disconnected. Configure valid connection or click on the connect button", "TCP");
+    uiDisconnectionSuccessful("Disconnected. Configure valid connection or click on the connect button");
 }
 
 void Widget::TCPConnectionError(QAbstractSocket::SocketError socketError)
 {
-    qWarning() << "Error:" <<" " << socket.errorString();
-    ui->connectionLabel->setText(QString("Error: %1 ").arg(socket.errorString()));
+    qWarning() << "Error:" <<" " << TCPSocket.errorString();
+    ui->connectionLabel->setText(QString("Error: %1 ").arg(TCPSocket.errorString()));
 }
 
 void Widget::TCPStateChanged(QAbstractSocket::SocketState socketState)
@@ -923,17 +908,20 @@ void Widget::TCPStateChanged(QAbstractSocket::SocketState socketState)
 void Widget::TCPReceiveData()
 {
     //Will only be used if we want to receive a feedback
-    ui->plainTextEdit->setPlainText(socket.readAll());
+    ui->plainTextEdit->setPlainText(TCPSocket.readAll());
 }
 
 void Widget::connectionHandler()
 {
     static bool attemptToConnect{false};
-    attemptToConnect = !attemptToConnect;
+
+    // only toggle when there has been a previous successful connection
+    if (TCPConnected || serialConnected)
+        attemptToConnect = !attemptToConnect;
+    else attemptToConnect = true;
 
     if(attemptToConnect)
     {
-        
         if (tcpActive)
         {
             /*
@@ -961,7 +949,7 @@ void Widget::connectionHandler()
                 serialConnected = true;
                 QString msg = "Connected to %1   Baud:%2 bps   Parity: %3   Stop Bits: %4   Mode: %5";
                 msg = msg.arg(port,baudRate,parity,stopBits,opMode);
-                uiConnectionSuccessful(msg,"Serial");
+                uiConnectionSuccessful(msg);
                 lastConnectionState = "Serial";
                 saveSettings();
             }
@@ -970,7 +958,7 @@ void Widget::connectionHandler()
                 serialConnected = false;
                 QMessageBox::information(this,"Connection Error","Connect to one of the "
                                                                  "available ports or Host by clicking on the settings button");
-                uiDisconnectionSuccessful("Not connected. Click on the settings button to configure connection", "serial");
+                uiDisconnectionSuccessful("Not connected. Click on the settings button to configure connection");
             }
         }
 
@@ -988,23 +976,25 @@ void Widget::connectionHandler()
         // Disconnect all open connections
         if(serialConnected) serial.close();
         if(TCPConnected) TCPDisconnect();
-        uiDisconnectionSuccessful("No active Connection. Click on Settings to configure","TCP/Serial");
+        uiDisconnectionSuccessful("No active Connection. Click on Settings to configure");
     }
 }
 
 void Widget::serverHasNewConnection()
 {
     //Getting Client Connection
-    QTcpSocket *soc =new QTcpSocket(this);
-    soc = server->nextPendingConnection();
+    QTcpSocket *soc = server->nextPendingConnection();
     //Connect the signal slot of the QTcpSocket to read the new data
 //    QObject::connect(socket, &QTcpSocket::readyRead, this, &MainWindow::socket_Read_Data);
 //    QObject::connect(socket, &QTcpSocket::disconnected, this, &MainWindow::socket_Disconnected);
-
+    soc->write("Hello client, you just connected to me \r\n");
+    soc->flush();
+    soc->waitForBytesWritten(3000);
+    //soc->close();
     qDebug() << "A Client connect!";
 }
 
-void Widget::uiConnectionSuccessful(QString msg, QString connectionType)
+void Widget::uiConnectionSuccessful(QString msg)
 {
     QPixmap iconConnect {":/16x16/connection.png"};
     QIcon iConnect(iconConnect);
@@ -1013,16 +1003,16 @@ void Widget::uiConnectionSuccessful(QString msg, QString connectionType)
     ui->loggerBaseFrame->setEnabled(true);
     ui->homepageframe->setEnabled(true);
     ui->connectionStatus->setStyleSheet("border-radius: 10px;background-color: rgb(0, 255, 5);");
-    qDebug()<<"Connected " + connectionType + " port";
+    qDebug()<<"Connected " + lastConnectionState + " port";
     ui->connectionLabel->setText(msg);
     saveSettings();
 }
 
-void Widget::uiDisconnectionSuccessful(QString msg, QString connectionType)
+void Widget::uiDisconnectionSuccessful(QString msg)
 {
     QPixmap iconDisconnect {":/16x16/disconnect.png"};
     QIcon iDisconnect {iconDisconnect};
-    qDebug()<<"Disconnected " <<connectionType<<" port";
+    qDebug()<<"Disconnected" +lastConnectionState + "port";
     ui->connectBtn->setText("Connect");
     ui->connectBtn->setIcon(iDisconnect);
     ui->loggerBaseFrame->setEnabled(false);
@@ -1097,10 +1087,15 @@ void Widget::serialReceiveData()
 
 void Widget::TCPServerConnection(QString host, quint16 port)
 {
-    if(!server->listen(QHostAddress(host), tcpPort))
+
+    QHostAddress addr;
+    if (addr.setAddress(host))
+        qInfo()<<"Host address created";
+
+    if(!server->listen(addr, tcpPort))
     {
         //If an error occurs, the error message is output
-        qDebug()<<server->errorString();
+        qWarning()<<"Server error when listening  to "+host+":"<<server->errorString();
         return;
     }
     else
