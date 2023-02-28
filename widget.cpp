@@ -446,7 +446,7 @@ void Widget::sendCommandLine()
     QByteArray cmd = ui->lineEdit->text().toUtf8();
     if (serialActive) serial.write(cmd,qstrlen(cmd));
     if (udpActive) {
-       QNetworkDatagram datagram(cmd,QHostAddress::Broadcast,tcpPort);
+       QNetworkDatagram datagram(cmd,QHostAddress::Broadcast,1234);
        //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
        qInfo() << "Sending: " << cmd << "via UDP";
        UDPSocket.writeDatagram(datagram);
@@ -703,7 +703,7 @@ void Widget::sendPWMFromSlider()
 
     if (serialActive) serial.write(pwm,qstrlen(pwm));
     if (udpActive) {
-       QNetworkDatagram datagram(pwm,QHostAddress::Broadcast,tcpPort);
+       QNetworkDatagram datagram(pwm,QHostAddress::Broadcast,1234);
        //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
        qInfo() << "Sending: " << pwm << "via UDP";
        UDPSocket.writeDatagram(datagram);
@@ -899,8 +899,8 @@ void Widget::UDPreadyRead()
     while(UDPSocket.hasPendingDatagrams())
     {
         QNetworkDatagram datagram = UDPSocket.receiveDatagram();
-        qInfo() << "Read: " << datagram.data() << " from " << datagram.senderAddress() << ":" << datagram.senderPort();
-        ui->plainTextEdit->setPlainText(datagram.data());
+        qInfo() << "Received via UDP: " << datagram.data() << " from " << datagram.senderAddress() << ":" << datagram.senderPort();
+        ui->plainTextEdit->appendPlainText(datagram.data());
     }
 }
 
@@ -970,16 +970,16 @@ void Widget::connectionHandler()
         }
         else if(udpActive)
         {
-            QString msg= "UDP is a connectionless protocol. Heartbeat signals will be sent to host confirm alive";
+            QString msg= "UDP socket is bound to port %1. Heartbeat signals will be sent to host confirm alive";
             QMessageBox::information(this,"Connection Message", msg);
-            if (!UDPSocket.bind(12345))
+            if (!UDPSocket.bind(QHostAddress::LocalHost,1234))
             {
                 QMessageBox::information(this,"Connection Error","Failed to bind UDP socket to port. Please try again");
                 UDPConnected =false;
 
             }
             else{
-            uiConnectionSuccessful(msg);
+            uiConnectionSuccessful(msg.arg(UDPSocket.peerPort()));
             lastConnectionState = "UDP";
             saveSettings();
             UDPConnected = true;

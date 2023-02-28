@@ -544,7 +544,7 @@ background-color: rgb(0, 22, 18);
             <string notr="true"/>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="HomePage">
             <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -1138,13 +1138,22 @@ font: 10pt &quot;Terminal&quot;;</string>
                         </property>
                         <item>
                          <widget class="QPlainTextEdit" name="plainTextEdit">
+                          <property name="font">
+                           <font>
+                            <family>Consolas</family>
+                            <pointsize>12</pointsize>
+                            <italic>false</italic>
+                            <bold>false</bold>
+                           </font>
+                          </property>
                           <property name="styleSheet">
                            <string notr="true">border-radius:1px;
 background-color: rgb(22, 22, 22);
-color: rgb(255, 255, 255);
+
 border-top-left-radius:15px;
 border-bottom-left-radius:15px;
-font: 10pt &quot;Terminal&quot;;</string>
+font: 12pt &quot;Consolas&quot;;
+color: rgb(253, 255, 111);</string>
                           </property>
                           <property name="undoRedoEnabled">
                            <bool>false</bool>
