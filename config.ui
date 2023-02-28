@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>594</width>
-    <height>385</height>
+    <height>394</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,8 +17,90 @@
    <string notr="true">background-color: rgb(248, 248, 248);</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QFrame" name="frame_3">
+     <property name="maximumSize">
+      <size>
+       <width>555</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QFrame{
+	background-color: rgb(223, 222, 221);
+	border-radius:15px;
+	color: rgb(0, 0, 0);
+}</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item alignment="Qt::AlignHCenter">
+       <widget class="QLabel" name="label_11">
+        <property name="font">
+         <font>
+          <family>Ubuntu Light</family>
+          <pointsize>8</pointsize>
+          <italic>false</italic>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Select Protocol</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="protocolSelCombo">
+        <property name="minimumSize">
+         <size>
+          <width>535</width>
+          <height>20</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>535</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <family>Ubuntu Light</family>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="frame">
+         <bool>true</bool>
+        </property>
+        <item>
+         <property name="text">
+          <string>Serial</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>TCPIP</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>UDP</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item>
-    <widget class="QTabWidget" name="tabWidget">
+    <widget class="QStackedWidget" name="stackedWidget">
      <property name="font">
       <font>
        <family>Ubuntu Light</family>
@@ -45,7 +127,7 @@ QTabBar::tab {
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     min-width: 8ex;
-    padding: 3px 10px;
+    position:center;
 	color: black;
 }
 
@@ -65,28 +147,10 @@ QTabBar::tab:!selected {
 }</string>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
-     <widget class="QWidget" name="serialtab">
-      <attribute name="title">
-       <string>Serial</string>
-      </attribute>
+     <widget class="QWidget" name="serialPage">
       <layout class="QVBoxLayout" name="verticalLayout_3">
-       <item>
-        <widget class="QCheckBox" name="setSerialActive">
-         <property name="font">
-          <font>
-           <family>Ubuntu Light</family>
-          </font>
-         </property>
-         <property name="text">
-          <string>Set as active connection</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
        <item>
         <widget class="QFrame" name="frame">
          <property name="minimumSize">
@@ -318,23 +382,8 @@ QTabBar::tab:!selected {
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tcptab">
-      <attribute name="title">
-       <string>TCP/IP</string>
-      </attribute>
+     <widget class="QWidget" name="tcpudpPage">
       <layout class="QVBoxLayout" name="verticalLayout_5">
-       <item>
-        <widget class="QCheckBox" name="setTCPActive">
-         <property name="font">
-          <font>
-           <family>Ubuntu Light</family>
-          </font>
-         </property>
-         <property name="text">
-          <string>Set as active connection</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <widget class="QFrame" name="frame_2">
          <property name="minimumSize">
@@ -367,22 +416,115 @@ QTabBar::tab:!selected {
           <enum>QFrame::Raised</enum>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item alignment="Qt::AlignRight">
+           <widget class="QCheckBox" name="useHostnameCheckBtn">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>15</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>100</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>Ubuntu Light</family>
+              <pointsize>7</pointsize>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
+            <property name="text">
+             <string>Use hostname</string>
+            </property>
+            <property name="icon">
+             <iconset resource="icons.qrc">
+              <normaloff>:/16x16/cil-check-alt.png</normaloff>:/16x16/cil-check-alt.png</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>8</width>
+              <height>8</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_11">
+            <item>
+             <widget class="QLabel" name="label_10">
+              <property name="text">
+               <string>Host name</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="hostNameLEdit">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>300</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Ubuntu Light</family>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="placeholderText">
+               <string>Hostname</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_9">
             <item>
              <widget class="QLabel" name="label_8">
               <property name="text">
-               <string>IP Address/Host name</string>
+               <string>IP Address</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QLineEdit" name="ipaddr">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>20</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
-                <width>200</width>
+                <width>300</width>
                 <height>16777215</height>
                </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Ubuntu Light</family>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
               </property>
               <property name="placeholderText">
                <string>IP address</string>
@@ -402,11 +544,25 @@ QTabBar::tab:!selected {
             </item>
             <item>
              <widget class="QLineEdit" name="tcp_port">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>20</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
-                <width>200</width>
+                <width>300</width>
                 <height>16777215</height>
                </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Ubuntu Light</family>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
               </property>
               <property name="maxLength">
                <number>6</number>
@@ -423,6 +579,12 @@ QTabBar::tab:!selected {
        </item>
        <item>
         <spacer name="verticalSpacer_2">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>20</height>
+          </size>
+         </property>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
@@ -503,6 +665,8 @@ border-radius: 8px;s</string>
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
  <connections/>
 </ui>

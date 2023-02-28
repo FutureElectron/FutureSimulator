@@ -21,10 +21,14 @@ Widget::Widget(QWidget *parent)
     ui->homeBtn->setStyleSheet(activeBtnStyle);
     ui->NormalSignalTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
+    if (lastConnectionState == "Serial") {serialActive=true; tcpActive=false; udpActive=false;}
+    if (lastConnectionState == "TCP") {serialActive=false; tcpActive=true; udpActive=false;}
+    if (lastConnectionState == "UDP") {serialActive=false; tcpActive=false; udpActive=true;}
+
     //TCP Server
     server = new QTcpServer(this);
     connect(server, SIGNAL(newConnection()), this, SLOT(serverHasNewConnection()));
-    TCPServerConnection(ipaddress, tcpPort);
+    TCPServerConnection("127.0.0.1", 1234);
 }
 
 void Widget::signalSlotsConnections()
@@ -230,9 +234,9 @@ void Widget::signalSlotsConnections()
     // ------------------------------End of Button connections-------------------------------------//
 
     //--->>> Processes
-    connect(proc,&QProcess::readyRead, this, &Widget::processRead);
-    connect(proc,&QProcess::readyReadStandardOutput, this, &Widget::processRead);
-    connect(proc,&QProcess::readyReadStandardError, this, &Widget::processRead);
+    connect(openExplorerProcess,&QProcess::readyRead, this, &Widget::processRead);
+    connect(openExplorerProcess,&QProcess::readyReadStandardOutput, this, &Widget::processRead);
+    connect(openExplorerProcess,&QProcess::readyReadStandardError, this, &Widget::processRead);
 
     //--------------------------------- Logging timers---------------------------------------------//
     connect(&NormalTimer, &QTimer::timeout,this,[=](){
@@ -440,13 +444,24 @@ void Widget::serialPortConfiguration()
 void Widget::sendCommandLine()
 {
     QByteArray cmd = ui->lineEdit->text().toUtf8();
-    serial.write(cmd,qstrlen(cmd));
+    if (serialActive) serial.write(cmd,qstrlen(cmd));
+    if (udpActive) {
+       QNetworkDatagram datagram(cmd,QHostAddress::Broadcast,tcpPort);
+       //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
+       qInfo() << "Sending: " << cmd << "via UDP";
+       UDPSocket.writeDatagram(datagram);
+    }
+    if (tcpActive) {
+        TCPSocket.write(cmd);
+        qInfo() << "Sending: " << cmd << "via TCP";
+    }
     ui->lineEdit->clear();
 }
 
 void Widget::saveSettings()
 {
     QString filename = QCoreApplication::applicationDirPath() + "/settings.ini";
+    qInfo()<<filename;
     QSettings settings(filename, QSettings::Format::IniFormat,this);
 
     settings.setValue("port",QVariant(port));
@@ -458,6 +473,8 @@ void Widget::saveSettings()
     settings.setValue("lastConnectionState", QVariant(lastConnectionState));
     settings.setValue("tcpPort", QVariant(tcpPort));
     settings.setValue("ipadrress", QVariant(ipaddress));
+    settings.setValue("useHostAddress", QVariant(useHostName));
+
     int result = settings.status();
     if (result ==QSettings::NoError && !settingsSaved )
         settingsSaved = true;
@@ -487,6 +504,7 @@ bool Widget::loadSettings()
      lastConnectionState = returnValue["lastConnectionState"];
      tcpPort = returnValue["tcpPort"].toInt();
      ipaddress = returnValue["ipadrress"];
+     useHostName = returnValue["useHostAddress"].toInt();
      //qInfo()<<lastConnectionState;
      if(opMode=="Anomaly Detection")
      {
@@ -499,18 +517,6 @@ bool Widget::loadSettings()
         ui->classificationBtn->setEnabled(true);
         ui->learnCmdBtn->setEnabled(false);
         ui->inferCmdBtn->setEnabled(false);
-     }
-
-     if (lastConnectionState == "Serial")
-     {
-         serialActive=true;
-         tcpActive =false;
-     }
-
-     if (lastConnectionState == "TCP")
-     {
-         tcpActive = true;
-         serialActive=false;
      }
 
      return true;
@@ -694,7 +700,18 @@ void Widget::sendPWMFromSlider()
     val.replace("**", QString::number(sliderval*10));
     QByteArray pwm = ("4"+QString::number(sliderval)).toUtf8();
     //qDebug()<<pwm;
-    if(serial.isOpen()) serial.write(pwm,qstrlen(pwm));
+
+    if (serialActive) serial.write(pwm,qstrlen(pwm));
+    if (udpActive) {
+       QNetworkDatagram datagram(pwm,QHostAddress::Broadcast,tcpPort);
+       //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
+       qInfo() << "Sending: " << pwm << "via UDP";
+       UDPSocket.writeDatagram(datagram);
+    }
+    if (tcpActive) {
+        TCPSocket.write(pwm);
+        qInfo() << "Sending: " << pwm << "via TCP";
+    }
     ui->pwmLabel->setText(val);
 }
 
@@ -702,7 +719,9 @@ void Widget::showConfigDialog()
 {
     // Get the configuration parameters from the user
     Config *c = new Config(this);
-    c->setIpaddr(ipaddress);
+
+    c->setUseHostName(useHostName);
+    if (useHostName ==1) c->setHostname(ipaddress); else c->setIpaddr(ipaddress);
     c->setPort(port);
     c->setBaudRate(baudRate);
     c->setDataBits(dataBits);
@@ -710,12 +729,10 @@ void Widget::showConfigDialog()
     c->setFlowControl(flowControl);
     c->setOperatingMode(opMode);
     c->setSerialActvie(serialActive);
-    qInfo()<<"serial active?" << serialActive;
     c->setTCPActive(tcpActive);
-    qInfo()<<"TCP active?" << tcpActive;
     c->setParity(parity);
     c->setTCPPort(QString::number(tcpPort));
-
+    c->setUdpActive(udpActive);
     int ret = c->exec();
     if(ret==QDialog::Accepted)
     {
@@ -732,6 +749,9 @@ void Widget::showConfigDialog()
         qInfo()<<"tcp: "<<tcpActive;
         qInfo() <<"serial: "<<serialActive;
         serialActive = c->getSerialActvie();
+        tcpActive = c->getTCPActive();
+        udpActive = c->getUdpActive();
+        useHostName = c->getUseHostName();
         //Enable the connect button now
         ui->connectBtn->setEnabled(true);
     }
@@ -750,14 +770,20 @@ void Widget::showConfigDialog()
         ui->learnCmdBtn->setEnabled(true);
         ui->inferCmdBtn->setEnabled(true);
     }
+    if(tcpActive || udpActive)
+    {
+        ui->frame_10->setEnabled(false);
+    }
+    else
+        ui->frame_10->setEnabled(true);
 }
 
 void Widget::openFileInExplorer()
 {
    QStringList args;
    args << "/open," << QDir::toNativeSeparators(logfolderPath+"/");
-   QProcess *process = new QProcess(this);
-   process->start("explorer.exe", args);
+   openExplorerProcess = new QProcess(this);
+   openExplorerProcess->start("explorer.exe", args);
 }
 
 void Widget::processRead()
@@ -765,7 +791,7 @@ void Widget::processRead()
     qint64 value = 0;
     do
     {
-        QByteArray line = proc->readAll();
+        QByteArray line = openExplorerProcess->readAll();
         qInfo() << line.trimmed();
         value = line.length();
     } while(value > 0);
@@ -853,7 +879,7 @@ void Widget::classification()
 void Widget::TCPConnectToHost(QString host, quint16 port)
 {
     // modify GUI file before doing this
-    if(TCPSocket.isOpen()) disconnect();
+    if(TCPSocket.isOpen()) TCPSocket.close();
     qInfo() << "Connecting to: " << host << " on port " << port;
     TCPSocket.connectToHost(host,port);
 }
@@ -865,13 +891,17 @@ void Widget::TCPDisconnect()
     {
         TCPSocket.close();
         TCPSocket.waitForDisconnected();
-
     }
 }
 
 void Widget::UDPreadyRead()
 {
-
+    while(UDPSocket.hasPendingDatagrams())
+    {
+        QNetworkDatagram datagram = UDPSocket.receiveDatagram();
+        qInfo() << "Read: " << datagram.data() << " from " << datagram.senderAddress() << ":" << datagram.senderPort();
+        ui->plainTextEdit->setPlainText(datagram.data());
+    }
 }
 
 void Widget::TCPConnectionSuccessful()
@@ -882,6 +912,7 @@ void Widget::TCPConnectionSuccessful()
                           " and port: %2").arg(ipaddress).arg(TCPSocket.peerPort());
     lastConnectionState="TCP";
 
+
     uiConnectionSuccessful(msg);
 }
 
@@ -889,12 +920,13 @@ void Widget::TCPdisconnected()
 {
     TCPConnected = false;
     qInfo()<<"TCP Disconnected";
-    uiDisconnectionSuccessful("Disconnected. Configure valid connection or click on the connect button");
+    uiDisconnectionSuccessful("TCP disconnected. Configure valid connection or click on the connect button");
 }
 
 void Widget::TCPConnectionError(QAbstractSocket::SocketError socketError)
 {
     qWarning() << "Error:" <<" " << TCPSocket.errorString();
+    TCPConnected = false;
     ui->connectionLabel->setText(QString("Error: %1 ").arg(TCPSocket.errorString()));
 }
 
@@ -916,7 +948,7 @@ void Widget::connectionHandler()
     static bool attemptToConnect{false};
 
     // only toggle when there has been a previous successful connection
-    if (TCPConnected || serialConnected)
+    if (TCPConnected || serialConnected || UDPConnected)
         attemptToConnect = !attemptToConnect;
     else attemptToConnect = true;
 
@@ -932,23 +964,39 @@ void Widget::connectionHandler()
             */
             //Listen on the specified port
 
-            qInfo()<<"TCP is active:"<<tcpActive;
-            qInfo()<<"connection iP is:"<<ipaddress;
             TCPConnectToHost(ipaddress,tcpPort);
             //check for successful connection
 
         }
+        else if(udpActive)
+        {
+            QString msg= "UDP is a connectionless protocol. Heartbeat signals will be sent to host confirm alive";
+            QMessageBox::information(this,"Connection Message", msg);
+            if (!UDPSocket.bind(12345))
+            {
+                QMessageBox::information(this,"Connection Error","Failed to bind UDP socket to port. Please try again");
+                UDPConnected =false;
+
+            }
+            else{
+            uiConnectionSuccessful(msg);
+            lastConnectionState = "UDP";
+            saveSettings();
+            UDPConnected = true;
+            // to implement heartbeat --- timebased
+            }
+        }
 
         // serial connection
-        if (serialActive)
+        else if (serialActive)
         {
             serialPortConfiguration();
             serial.open(QIODevice::ReadWrite);
             if(serial.isOpen())
             {
                 serialConnected = true;
-                QString msg = "Connected to %1   Baud:%2 bps   Parity: %3   Stop Bits: %4   Mode: %5";
-                msg = msg.arg(port,baudRate,parity,stopBits,opMode);
+                QString msg = "Connected to %1   Baudrate:%2 bps Datbits:%6  Parity: %3   Stop Bits: %4   Mode: %5";
+                msg = msg.arg(port,baudRate,parity,stopBits,opMode,dataBits);
                 uiConnectionSuccessful(msg);
                 lastConnectionState = "Serial";
                 saveSettings();
@@ -976,6 +1024,7 @@ void Widget::connectionHandler()
         // Disconnect all open connections
         if(serialConnected) serial.close();
         if(TCPConnected) TCPDisconnect();
+        if(UDPConnected) {UDPSocket.close(); UDPConnected=false;}
         uiDisconnectionSuccessful("No active Connection. Click on Settings to configure");
     }
 }
@@ -984,14 +1033,29 @@ void Widget::serverHasNewConnection()
 {
     //Getting Client Connection
     QTcpSocket *soc = server->nextPendingConnection();
+    soc->setObjectName("NewSocket");
     //Connect the signal slot of the QTcpSocket to read the new data
-//    QObject::connect(socket, &QTcpSocket::readyRead, this, &MainWindow::socket_Read_Data);
-//    QObject::connect(socket, &QTcpSocket::disconnected, this, &MainWindow::socket_Disconnected);
+    QObject::connect(soc, &QTcpSocket::readyRead, this, [=](){TCPServerHasNewData(soc);});
+    QObject::connect(soc, &QTcpSocket::disconnected, this, [=](){TCPServerSocketLostClient(soc);});
     soc->write("Hello client, you just connected to me \r\n");
     soc->flush();
     soc->waitForBytesWritten(3000);
-    //soc->close();
-    qDebug() << "A Client connect!";
+}
+
+void Widget::TCPServerHasNewData(QTcpSocket *newSereverSocket)
+{
+    QByteArray data = newSereverSocket->readAll();
+    ui->plainTextEdit->appendPlainText(data);
+    qInfo()<<"Received data from"<<newSereverSocket->objectName();
+}
+
+void Widget::TCPServerSocketLostClient(QTcpSocket *newSereverSocket)
+{
+
+//     QTcpSocket *soc = static_cast<QTcpSocket *>(sender());
+//     qInfo()<<"Closeing connection with"<<soc->objectName();
+     qInfo()<<"Closeing connection with"<<newSereverSocket->objectName();
+     newSereverSocket->close();//
 }
 
 void Widget::uiConnectionSuccessful(QString msg)
@@ -1012,7 +1076,7 @@ void Widget::uiDisconnectionSuccessful(QString msg)
 {
     QPixmap iconDisconnect {":/16x16/disconnect.png"};
     QIcon iDisconnect {iconDisconnect};
-    qDebug()<<"Disconnected" +lastConnectionState + "port";
+    qDebug()<<"Disconnected " +lastConnectionState + " port";
     ui->connectBtn->setText("Connect");
     ui->connectBtn->setIcon(iDisconnect);
     ui->loggerBaseFrame->setEnabled(false);
@@ -1089,10 +1153,8 @@ void Widget::TCPServerConnection(QString host, quint16 port)
 {
 
     QHostAddress addr;
-    if (addr.setAddress(host))
-        qInfo()<<"Host address created";
-
-    if(!server->listen(addr, tcpPort))
+    addr.setAddress(host);
+    if(!server->listen(QHostAddress::LocalHost, tcpPort))
     {
         //If an error occurs, the error message is output
         qWarning()<<"Server error when listening  to "+host+":"<<server->errorString();
@@ -1100,16 +1162,17 @@ void Widget::TCPServerConnection(QString host, quint16 port)
     }
     else
       {
-        qInfo()<<"Connected to server";
-
+        qInfo()<<"Server Started";
       }
 }
 
 Widget::~Widget()
 {
-    if(proc->isOpen()) proc->close();
+    if(openExplorerProcess->isOpen()) openExplorerProcess->close();
     delete ui;
     serial.close();
+    TCPSocket.close();
+    UDPSocket.close();
     logfile->close();
     delete logfile;
 }

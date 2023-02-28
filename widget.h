@@ -84,12 +84,14 @@ private slots:
     void TCPReceiveData();
     void connectionHandler(void);
     void serverHasNewConnection();
+    void TCPServerHasNewData(QTcpSocket *newSereverSocket);
+    void TCPServerSocketLostClient(QTcpSocket *newSereverSocket);
 
 
 private:
     Ui::Widget *ui;
-    QString ipaddress="192.168.0.10";
-    quint16 tcpPort=1234;
+    QString ipaddress;
+    quint16 tcpPort;
     QString port;
     QString mes;
     QString baudRate;
@@ -105,7 +107,8 @@ private:
     bool connected {false};
     bool logging{false};
     bool enableOutput {true};
-    bool serialActive{false}, tcpActive{false};
+    bool serialActive{false}, tcpActive{false}, udpActive{false};
+    bool UDPConnected{false};
     QString buffer, lastcommand;
     bool settingsSaved{false};
     QString logfolderPath;
@@ -115,7 +118,7 @@ private:
     int pIndex = 0;
     int logtime{50};
 
-    QProcess *proc = new QProcess(this);
+    QProcess *openExplorerProcess = new QProcess(this);
 
     QTcpSocket TCPSocket;
     QUdpSocket UDPSocket;
@@ -163,6 +166,7 @@ private:
     void uiConnectionSuccessful(QString msg);
     void uiDisconnectionSuccessful(QString msg);
     bool serialConnected{false}, TCPConnected {false};
+    int useHostName {0};
 
 };
 #endif // WIDGET_H

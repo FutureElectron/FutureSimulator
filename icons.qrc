@@ -181,9 +181,13 @@
         <file>16x16/disconnect.png</file>
         <file>16x16/connection.png</file>
         <file>16x16/edit.png</file>
+        <file>16x16/drop-down-list.png</file>
+        <file>16x16/on-button.png</file>
+        <file>16x16/off-button.png</file>
     </qresource>
     <qresource prefix="/stylesheets">
         <file>style/activeBtnStyle.css</file>
         <file>style/inActiveBtnStyle.css</file>
+        <file>style/configDialogStyle.css</file>
     </qresource>
 </RCC>

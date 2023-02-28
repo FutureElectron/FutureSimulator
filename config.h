@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "qvalidator.h"
 #include <QDialog>
+//#include <QButtonGroup>
 
 namespace Ui {
 class Config;
@@ -31,10 +31,10 @@ public:
     QString getOperatingMode() const;
     bool getTCPActive() const;
     bool getSerialActvie() const;
-    bool configValidation();
 
     void setPort(const QString &newPort);
     void setIpaddr(const QString &newIpaddr);
+    void setHostname(const QString &hostname);
     void setBaudRate(const QString &newBaudRate);
     void setDataBits(const QString &newDataBits);
     void setStopBits(const QString &newStopBits);
@@ -45,8 +45,17 @@ public:
     void setSerialActvie(const bool newSerialActvie);
     void setTCPPort(QString newTCPPort);
 
+    bool getUdpActive() const;
+    void setUdpActive(bool newUdpActive);
+
+
+
+    int getUseHostName() const;
+    void setUseHostName(int newUseHostName);
+
 public slots:
     void setvalues(void);
+    void hostNameCheckBoxStateChanged(int state);
 
 private:
     Ui::Config *ui;
@@ -59,10 +68,12 @@ private:
     QString operatingMode;
     QString ipaddr;
     quint16 tcpPort;
+//    QButtonGroup *activeConnection;
     bool TCPActive = false;
     bool serialActvie = false;
     bool acceptedIP{false}, acceptedPort{false};
-
+    bool useHostName {false};
+    bool UDPActive;
     Q_PROPERTY(QString ipaddr READ getIpaddr CONSTANT)
     Q_PROPERTY(QString tcpPort READ getTcpPort CONSTANT)
 };

@@ -1,15 +1,20 @@
 #include "config.h"
-#include "qbuttongroup.h"
 #include "ui_config.h"
 #include <QSerialPortInfo>
 #include <QSerialPort>
 #include <QMessageBox>
 #include <QButtonGroup>
+#include <QFile>
 
 Config::Config(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Config)
 {
+
+
+    ui->setupUi(this);
+
+    // fill the comport combo with available ports
     QSerialPortInfo serialInfo;
 
     QList<QSerialPortInfo> ports = serialInfo.availablePorts();
@@ -18,20 +23,58 @@ Config::Config(QWidget *parent) :
             stringPorts.append(ports.at(i).portName());
         }
 
-    ui->setupUi(this);
     ui->portCombo->addItems(stringPorts);
+
 
 
     connect(ui->cancelBtn,&QPushButton::clicked,this, [=](){
         reject();
     });
+
     connect(ui->okBtn, &QPushButton::clicked,this, &Config::setvalues);
 
-    QButtonGroup *activeConnection = new QButtonGroup(ui->tabWidget);
-    activeConnection->addButton(ui->setSerialActive);
-    activeConnection->addButton(ui->setTCPActive);
-    activeConnection->setExclusive(true);
 
+
+    connect(ui->useHostnameCheckBtn, &QCheckBox::stateChanged,this, &Config::hostNameCheckBoxStateChanged);
+    connect(ui->protocolSelCombo, &QComboBox::currentTextChanged,this,[=](){
+        if(ui->protocolSelCombo->currentText()=="Serial")
+        {
+            ui->stackedWidget->setCurrentIndex(0);
+            serialActvie = true;
+            TCPActive =false;
+            UDPActive =false;
+        }
+        if(ui->protocolSelCombo->currentText()=="TCPIP")
+        {
+            ui->stackedWidget->setCurrentIndex(1);
+            serialActvie = false;
+            TCPActive =true;
+            UDPActive =false;
+        }
+        if(ui->protocolSelCombo->currentText()=="UDP")
+        {
+            ui->stackedWidget->setCurrentIndex(1);
+            serialActvie = false;
+            TCPActive =false;
+            UDPActive =true;
+        }
+    });
+
+    // ensure that the default state of checkbox is checked
+    //ui->useHostnameCheckBtn->setChecked(true);
+
+    // set stylesheet
+    //extract the settings and apply to application
+    QString filename = ":/stylesheets/style/configDialogStyle.css";
+
+    QFile style(filename);
+    if(style.open(QIODevice::ReadOnly)){
+        QString sheetStyle = style.readAll();
+        style.close();
+        setStyleSheet(sheetStyle);
+    }
+
+    // Validators
     QValidator *validator = new QIntValidator(1,65535,this);
     ui->tcp_port->setValidator(validator);
 }
@@ -79,7 +122,7 @@ QString Config::getOpMode() const
 void Config::setvalues()
 {
 
-    if(ui->setSerialActive->isChecked())
+    if(serialActvie)
     {
         serialPort = ui->portCombo->currentText();
         baudRate = ui->baudrateCombo->currentText();
@@ -89,13 +132,12 @@ void Config::setvalues()
         flowControl = ui->flowcontrolCombo->currentText();
         operatingMode = ui->modeCombo->currentText();
         ipaddr = ui->ipaddr->text();
-        serialActvie = ui->setSerialActive->isChecked();
         accept();
     }
 
-    if (ui->setTCPActive->isChecked())
+    if (TCPActive || UDPActive)
     {
-        TCPActive = ui->setTCPActive->isChecked();
+
         QString IpRange = "(?:[0-1]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])";
         QRegularExpression IpRegex ("^" + IpRange
                                     + "(\\." + IpRange + ")"
@@ -106,19 +148,29 @@ void Config::setvalues()
         int pos{0};
         QString tmp_ipaddr = ui->ipaddr->text();
 
+        if (!ui->useHostnameCheckBtn->isChecked())
 
-        if (ipValidator->validate(tmp_ipaddr,pos) !=2)
         {
-            QMessageBox::warning(this,"Invalid IP Address", "Please enter a valid IP address! "
-                                                              "Please try again ...",QMessageBox::Ok);
-            ui->ipaddr->setText(""); 
-            acceptedIP = false;
+            if (ipValidator->validate(tmp_ipaddr,pos) !=2 )
+            {
+                QMessageBox::warning(this,"Invalid IP Address", "Please enter a valid IP address! "
+                                                                "Please try again ...",QMessageBox::Ok);
+                ui->ipaddr->setText("");
+                acceptedIP = false;
 
+            }
+            else
+            {
+                acceptedIP = true;
+                ipaddr = tmp_ipaddr;
+                useHostName = 0;
+            }
         }
         else
         {
-            acceptedIP = true;
-            ipaddr = tmp_ipaddr;
+            ipaddr = ui->hostNameLEdit->text();
+            acceptedIP = true; 
+            useHostName = 1;
         }
 
         // Validate TCP port entries
@@ -140,9 +192,54 @@ void Config::setvalues()
         }
 
     }
-    if (configValidation())
+    if (acceptedIP && acceptedPort)
         accept();
 }
+
+bool Config::getUdpActive() const
+{
+    return UDPActive;
+}
+
+void Config::setUdpActive(bool newUdpActive)
+{
+    UDPActive = newUdpActive;
+    if(newUdpActive)
+    {
+        ui->stackedWidget->setCurrentIndex(0);
+        ui->protocolSelCombo->setCurrentText("UDP");
+    }
+
+}
+
+void Config::hostNameCheckBoxStateChanged(int state)
+{
+
+    if (state == 2)
+    {
+        ui->ipaddr->setEnabled(false);
+        ui->hostNameLEdit->setEnabled(true);
+    }
+
+    else
+    {
+        ui->ipaddr->setEnabled(true);
+        ui->hostNameLEdit->setEnabled(false);
+    }
+
+}
+
+int Config::getUseHostName() const
+{
+    return useHostName;
+}
+
+void Config::setUseHostName(int newUseHostName)
+{
+    useHostName = newUseHostName;
+    ui->useHostnameCheckBtn->setChecked(newUseHostName);
+}
+
 
 void Config::setPort(const QString &newPort)
 {
@@ -154,6 +251,13 @@ void Config::setIpaddr(const QString &newIpaddr)
 {
     ipaddr = newIpaddr;
     ui->ipaddr->setText(ipaddr);
+
+}
+
+void Config::setHostname(const QString &hostname)
+{
+    ipaddr = hostname;
+    ui->hostNameLEdit->setText(hostname);
 }
 
 void Config::setBaudRate(const QString &newBaudRate)
@@ -195,18 +299,26 @@ void Config::setOperatingMode(const QString &newOperatingMode)
 void Config::setTCPActive(bool newTCPActive)
 {
     TCPActive = newTCPActive;
-    ui->setTCPActive->setChecked(newTCPActive);
+    if (newTCPActive)
+    {
+        ui->protocolSelCombo->setCurrentText("TCPIP");
+        ui->stackedWidget->setCurrentIndex(1);
+    }
 }
 
 void Config::setSerialActvie(const bool newSerialActvie)
 {
     serialActvie = newSerialActvie;
-    ui->setSerialActive->setChecked(newSerialActvie);
+    if (newSerialActvie)
+    {
+        ui->protocolSelCombo->setCurrentText("Serial");
+        ui->stackedWidget->setCurrentIndex(0);
+    }
 }
 
 void Config::setTCPPort(const QString newTCPPort)
 {
-//    tcpPort = newTCPPort;
+    tcpPort = newTCPPort.toInt();
     ui->tcp_port->setText(newTCPPort);
 }
 
@@ -231,26 +343,6 @@ bool Config::getSerialActvie() const
     return serialActvie;
 }
 
-bool Config::configValidation()
-{
-    // First check if any option is selected already and return if false
-    if (!ui->setSerialActive->isChecked() && !serialActvie)
-    {
-        QMessageBox::warning(this,"Protocol Error", "No Protocol is selected. "
-                                                    "Please select a vailid protocol to proceed...",QMessageBox::Ok);
-        return false;
-    }
-    return true;
-//    bool ipvalidation {false};
-//    if (TCPActive)
-//        if (acceptedIP && acceptedPort) ipvalidation = true;
-
-
-//    if (ipvalidation && (TCPActive || serialActvie))
-//        return true;
-//    else
-//        return false;
-}
 
 QString Config::getIpaddr() const
 {
