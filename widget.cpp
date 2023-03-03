@@ -756,7 +756,8 @@ void Widget::showConfigDialog()
         ui->connectBtn->setEnabled(true);
     }
     else
-        QMessageBox::warning(this,"COMM Port Settings","Settings not saved");
+        QMessageBox::warning(this,"COMM Port Settings","You did not save any valid settings."
+                                                       " Previous configuration parameters will be used instead");
 
     if(opMode == "n-Classification")
     {
@@ -906,13 +907,11 @@ void Widget::UDPreadyRead()
 
 void Widget::TCPConnectionSuccessful()
 {
-    qInfo()<<"Connected to "<<ipaddress<<"on port: "<<tcpPort;
+    qDebug()<<"Connected to "<<ipaddress<<"on port: "<<tcpPort;
     TCPConnected = true;
     QString msg = QString("TCP Connection established to %1"
                           " and port: %2").arg(ipaddress).arg(TCPSocket.peerPort());
     lastConnectionState="TCP";
-
-
     uiConnectionSuccessful(msg);
 }
 
