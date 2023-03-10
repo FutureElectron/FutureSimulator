@@ -42,15 +42,15 @@ QComboBox {
         border-radius:8px;
           }
 
-QComboBox::drop-down {
+/*QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
     width: 15px;
     border-left-width: 1px;
     border-left-color: darkgray;
     border-left-style: solid; /* just a single line */
-    image: url(:/16x16/drop-down-list.png);
-}
+    image: url(://16x16/down-arrow.png);
+}*/
 
 QComboBox:on { /* shift the text when the popup opens */
     padding-top: 3px;

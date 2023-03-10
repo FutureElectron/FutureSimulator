@@ -703,7 +703,7 @@ void Widget::sendPWMFromSlider()
 
     if (serialActive) serial.write(pwm,qstrlen(pwm));
     if (udpActive) {
-       QNetworkDatagram datagram(pwm,QHostAddress::Broadcast,1234);
+       QNetworkDatagram datagram(pwm,QHostAddress("192.168.100.30"),12345);
        //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
        qInfo() << "Sending: " << pwm << "via UDP";
        UDPSocket.writeDatagram(datagram);
