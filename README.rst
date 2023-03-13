@@ -1,4 +1,4 @@
-Template for the Read the Docs tutorial
+Future Simulator
 =======================================
 
 This is a simulator for creating CSV log files to be used with STMicroelectronics NanoEdgeAI tool. It has functionality for establishing 
