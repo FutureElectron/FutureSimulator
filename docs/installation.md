@@ -1,6 +1,6 @@
 ## ![AEG_logo_Eng_final.png](./images/AEGIcon.png)
 
-## FUTURE SIMULATOR 
+## INSTALLATION GUIDE 
 Title:   How to Use Simulator App
 Summary: Contains Installion requirements and user guide
 Author: Stanley Ezeh

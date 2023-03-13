@@ -24,11 +24,6 @@ theme:
       nav_style: dark
       locale: en
       navigation_depth: 5
-      shortcuts:
-                help: 191    # ?
-                next: 78     # n
-                previous: 80 # p
-                search: 83   # s
       sticky_navigation: True
       include_homepage_in_sidebar: True
       logo: './images/future.png'
