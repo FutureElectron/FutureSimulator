@@ -1,0 +1,55 @@
+QCheckBox {
+	padding:2px;
+}
+QCheckBox:hover {
+	border-radius:4px;
+	border-style:solid;
+	border-width:1px;
+	padding-left: 1px;
+	padding-right: 1px;
+	padding-bottom: 1px;
+	padding-top: 1px;
+	border-color: rgb(255,150,60);
+	background-color:qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(190, 90, 50, 50), stop:1 rgba(250, 130, 40, 50));
+}
+QTabWidget::tab-bar {
+   alignment: center;
+   border-radius: 10px;
+   }
+QCheckBox::indicator:checked {
+	border-radius:4px;
+	border-style:solid;
+	border-width:1px;
+	border-color: rgb(246, 134, 86);
+  	background-color:rgb(246, 134, 86)
+}
+QCheckBox::indicator:unchecked {
+	border-radius:4px;
+	border-style:solid;
+	border-width:1px;
+	border-color:rgb(246, 134, 86);
+  	background-color:rgb(255,255,255);
+}
+QColorDialog {
+	background-color:#f0f0f0;
+}
+QComboBox {
+	color:rgb(81,72,65);
+	background: #ffffff;
+}
+QComboBox:editable {
+	background: #ffffff;
+	color: rgb(81,72,65);
+	selection-color:rgb(81,72,65);
+	selection-background-color: #ffffff;
+}
+QComboBox QAbstractItemView {
+	color:rgb(81,72,65);	
+	background: #ffffff;
+	selection-color: #ffffff;
+	selection-background-color: rgb(246, 134, 86);
+}
+QComboBox:!editable:on, QComboBox::drop-down:editable:on {
+	color:  #1e1d23;	
+	background: #ffffff;
+}
