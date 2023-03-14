@@ -1,6 +1,4 @@
-<img src="./images/AEGIcon.png" alt="AEG Icon" title="AEG Icon" width="200"/>
-
-..image:: ./images/AEGIcon.png
+.. image:: ../images/AEGIcon.png
    :height: 100px
    :width: 200 px
    :scale: 50 %
