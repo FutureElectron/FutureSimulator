@@ -1,9 +1,14 @@
-.. image:: ../images/AEGIcon.png
+.. future simulator documentation master file, created by
+   sphinx-quickstart on Tue Mar 14 10:07:59 2023.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+.. image:: ./images/AEGIcon.png
    :height: 100px
    :width: 200 px
-   :scale: 50 %
+   :scale: 100 %
    :alt: Advanced Engineering Group
-   :align: center
+   :align: left
 
 Future Simulator User Guide
 ===================================
@@ -15,7 +20,7 @@ for controlling the behaviour of the controller. It is possible to connect to
 the controller via TCP, UDP or serial.
 
 
-.. note::
+.. admonition:: Note
 
    This project is under active development.
 
@@ -23,14 +28,25 @@ Contents
 --------
 
 .. toctree::
+   :maxdepth: 3
 
-   * requirements
-   * installation
-   * Serial Connection Setup
-   * TCP connection Setup
-   * UDP Connection Setup
-   * Controlling the MCU
-   * Captureing MCU data
-   * Generating CSV logs
-   * Application Logs
+   installation
+   connection 
+   connection/Serial
+   connection/TCP
+   connection/UDP
+   commands/sending-commands
+   commands/receiving-data-from-mcu
+   ai/anomalydetection
+   ai/n-classification
+   ai/NanoEdgeAI
+   Logging/creating-logs
+   Logging/exporting-logs
+   commands/accessing-app-logs
+
+
+
+   
+
+   
    
