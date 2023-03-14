@@ -5,16 +5,19 @@ nav:
     - 'Installation': 'installation.md'
     - 'User Guide':
         - 'Setup Connection':
-            - 'Serial': '.\User Guide\Connecting to Microcontroller\Serial.md'
-            - 'TCP': '.\User Guide\Connecting to Microcontroller\TCP.md'
-            - 'UDP': '.\User Guide\Connecting to Microcontroller\UDP.md'
-        - 'Sending Commands': '.\User Guide\Commands and Response\sending-commands.md'
-        - 'Receiving Data': '.\User Guide\Commands and Response\receiving-data-from-mcu.md'
-        - 'Application Logs': '.\User Guide\Commands and Response\accessing-app-logs.md'
-
+            - 'Serial': './User Guide/Connecting to Microcontroller/Serial.md'
+            - 'TCP': './User Guide/Connecting to Microcontroller/TCP.md'
+            - 'UDP': './User Guide/Connecting to Microcontroller/UDP.md'
+        - 'Sending Commands': './User Guide/Commands and Response/sending-commands.md'
+        - 'Receiving Data': './User Guide/Commands and Response/receiving-data-from-mcu.md'
+        - 'Application Logs': './User Guide/Commands and Response/accessing-app-logs.md'
+        - 'Artificial Intelligence': 
+            - 'NanoEdgeAI': './User Guide/Artificial Intelligence/NanoEdgeAI.md'
+            - 'Anomaly Detection': './User Guide/Artificial Intelligence/anomalydetection.md'
+            - 'N-Classification': './User Guide/Artificial Intelligence/n-classification.md'
         - 'Logging MCU Data':
-            - 'Generating Log Files' : '.\User Guide\Logging\creating-logs.md'
-            - 'Exporting Log Files' : '.\User Guide\Logging\exporting-logs.md'
+            - 'Generating Log Files' : './User Guide/Logging/creating-logs.md'
+            - 'Exporting Log Files' : './User Guide/Logging/exporting-logs.md'
     - About:
         - 'License': 'license.md'
         - 'Release Notes': 'release-notes.md'
