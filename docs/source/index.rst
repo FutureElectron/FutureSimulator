@@ -28,7 +28,6 @@ Contents
 --------
 
 .. toctree::
-   :hidden:
    :maxdepth: 2
    :caption:  Getting Started
    
@@ -37,7 +36,6 @@ Contents
    settingup-the-mcu.rst 
 
 .. toctree::
-   :hidden:
    :maxdepth: 2
    :caption:  How-to guides
 
@@ -53,7 +51,6 @@ Contents
 ..    ai/n-classification
 
 .. toctree::
-   :hidden:
    :maxdepth: 2
    :caption:  Troubleshooting
    
