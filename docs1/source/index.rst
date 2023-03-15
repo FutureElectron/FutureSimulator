@@ -30,7 +30,7 @@ Contents
 
 .. toctree::
    :maxdepth: 3
-   :caption: 🚀 Getting Started
+   :caption:  Getting Started
    
    installation
    connection
@@ -38,14 +38,14 @@ Contents
 
 .. toctree::
    :maxdepth: 3
-   :caption: 📚 How-to guides
+   :caption:  How-to guides
 
    commands/sending-commands
    logging 
 
 .. .. toctree::
 ..    :maxdepth: 3
-..    :caption: 💡 Artificial Intelligence
+..    :caption:  Artificial Intelligence
 
 ..    ai/NanoEdgeAI
 ..    ai/anomalydetection

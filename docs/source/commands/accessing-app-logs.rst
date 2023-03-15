@@ -1,12 +1,5 @@
 .. future simulator documentation master file, created by
 
-.. image:: ../images/AEGIcon.png
-   :height: 100px
-   :width: 200 px
-   :scale: 100 %
-   :alt: Advanced Engineering Group
-   :align: left
-
 Accessing App Logs
 ===================
 

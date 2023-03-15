@@ -12,7 +12,6 @@
 
 Future Simulator User Guide
 ===================================
-Author: Stanley Ezeh
 
 The Future Simulator app is a Windows-based application for interacting with 
 microcontrollers in order to capture data for logging purposes and sending commands
@@ -29,16 +28,18 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 3
-   :caption: 🚀 Getting Started
+   :hidden:
+   :maxdepth: 2
+   :caption: 💡 Getting Started
    
    installation
    connection
    settingup-the-mcu.rst 
 
 .. toctree::
-   :maxdepth: 3
-   :caption: 📚 How-to guides
+   :hidden:
+   :maxdepth: 2
+   :caption:  How-to guides
 
    commands/sending-commands
    logging 
@@ -52,7 +53,8 @@ Contents
 ..    ai/n-classification
 
 .. toctree::
-   :maxdepth: 3
+   :hidden:
+   :maxdepth: 2
    :caption:  Troubleshooting
    
    commands/accessing-app-logs
