@@ -24,19 +24,22 @@ the controller via TCP, UDP or serial.
    This project is under active development.
 
 
-Contents
---------
+Getting Started
+----------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption:  Getting Started
    
    installation
    connection
    settingup-the-mcu.rst 
 
+How-to guides
+----------------
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption:  How-to guides
 
    commands/sending-commands
@@ -49,6 +52,9 @@ Contents
 ..    ai/NanoEdgeAI
 ..    ai/anomalydetection
 ..    ai/n-classification
+
+Troubleshooting
+----------------
 
 .. toctree::
    :maxdepth: 2
