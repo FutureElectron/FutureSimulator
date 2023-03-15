@@ -3,12 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: ../images/nanoedge-logo.png
+.. image:: ../images/AEGIcon.png
    :height: 100px
-   :width: 250 px
+   :width: 200 px
    :scale: 100 %
    :alt: Advanced Engineering Group
    :align: left
 
-NanoEdgeAI Primer
+Anomaly Detection
 ===================================
