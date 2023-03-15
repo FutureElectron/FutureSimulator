@@ -30,7 +30,7 @@ Contents
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: 💡 Getting Started
+   :caption:  Getting Started
    
    installation
    connection
