@@ -45,13 +45,11 @@ How-to guides
    commands/sending-commands
    logging 
 
-.. .. toctree::
-..    :maxdepth: 3
-..    :caption: 💡 Artificial Intelligence
+.. toctree::
+   :maxdepth: 2
+   :caption:  Artificial Intelligence
 
-..    ai/NanoEdgeAI
-..    ai/anomalydetection
-..    ai/n-classification
+   ai
 
 Troubleshooting
 ----------------
@@ -61,12 +59,6 @@ Troubleshooting
    :caption:  Troubleshooting
    
    commands/accessing-app-logs
-   support
    faq
-
-
-
-   
-
-   
+      
    

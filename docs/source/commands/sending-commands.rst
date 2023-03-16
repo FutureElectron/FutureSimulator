@@ -10,11 +10,13 @@ Command Options
 ----------------
 1. Buttons: The user can send commands to put alter the state or behaviour of the MCU by clicking any of the 6 buttons. If the application is set to 
    Anomaly detection mode, the :guilabel:`CLASSIFY` button will be disabled. In Classification mode, the :guilabel:`LEARN`, and :guilabel:`INFER` are 
-   disabled.
+   disabled. Clicking on the :guilabel:`VERBOSITY` button toggles the verbosity levels between HIGH and LOW. 
 
 .. figure:: ../images/commands-buttons.png
     :width: 90%
     :align: center
+
+    Command Buttons
 
 2. Command Line: Commands can be sent by typing specific commands to the MCU from the Command LineEdit. The commands must be any of the the following
 
@@ -51,7 +53,7 @@ Command Options
     :width: 90%
     :align: center
 
-    Command line edit
+    Command Lineedit
 
 
 3. PWM Slider: Moving the slider sends a PWM command to the MCU.
@@ -74,4 +76,4 @@ Data from the MCU is displayed in the Output Console.
     :width: 90%
     :align: center
 
-    Output from microcontroller
+    Nessage Box

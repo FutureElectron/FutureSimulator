@@ -8,16 +8,20 @@ The software is designed as a state machine with four states
 
 1. Idle 
 2. Logging
-3. N-classification 
-4. Learning
-5. Inference 
+3. Learning
+4. Inference 
 
-.. figure:: ./images/stm32code.png
+.. figure:: ./images/statemachine.png
     :width: 400 px
     :height: 300 px
     :align: center
 
-State machine for MCU
+    State machine 
+
+.. warning:: 
+    Sending the ::guilabel:`INFERENCE` command when the model has not been trained will result in errors.
+    Do NOT attempt to change the state to Inference state without first training the Machine Learning Model by sending the LEARN command. 
+
 
 Idle State
 -----------
@@ -52,6 +56,8 @@ the :guilabel:`log` function.
     :param learning_iterations: Defines the number of times the neai_anomalydetection_learn api is called to train the model
     :type learning_iterations: int
     :return: void 
+
+.. tip:: A change of state is only possible when learning is complete.
 
 
 Inference
