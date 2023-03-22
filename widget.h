@@ -90,9 +90,9 @@ private slots:
 
 private:
     Ui::Widget *ui;
-    QString ipaddress;
-    quint16 tcpPort;
-    QString port;
+    QString tcpIPAddr, udpLocalIPAddr, udpRemoteIPAddr;
+    quint16 tcpPort, udpLocalPort, udpRemotePort;
+    QString serialPort;
     QString mes;
     QString baudRate;
     QString dataBits;

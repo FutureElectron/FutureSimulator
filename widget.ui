@@ -989,7 +989,7 @@ QSlider::handle:horizontal:pressed {
                            <number>9</number>
                           </property>
                           <property name="pageStep">
-                           <number>10</number>
+                           <number>9</number>
                           </property>
                           <property name="orientation">
                            <enum>Qt::Horizontal</enum>
@@ -998,7 +998,7 @@ QSlider::handle:horizontal:pressed {
                            <enum>QSlider::NoTicks</enum>
                           </property>
                           <property name="tickInterval">
-                           <number>1</number>
+                           <number>0</number>
                           </property>
                          </widget>
                         </item>

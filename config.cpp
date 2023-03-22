@@ -25,16 +25,10 @@ Config::Config(QWidget *parent) :
 
     ui->portCombo->addItems(stringPorts);
 
-
-
     connect(ui->cancelBtn,&QPushButton::clicked,this, [=](){
         reject();
     });
-
     connect(ui->okBtn, &QPushButton::clicked,this, &Config::setvalues);
-
-
-
     connect(ui->useHostnameCheckBtn, &QCheckBox::stateChanged,this, &Config::hostNameCheckBoxStateChanged);
     connect(ui->protocolSelCombo, &QComboBox::currentTextChanged,this,[=](){
         if(ui->protocolSelCombo->currentText()=="Serial")
@@ -53,15 +47,12 @@ Config::Config(QWidget *parent) :
         }
         if(ui->protocolSelCombo->currentText()=="UDP")
         {
-            ui->stackedWidget->setCurrentIndex(1);
+            ui->stackedWidget->setCurrentIndex(2);
             serialActvie = false;
             TCPActive =false;
             UDPActive =true;
         }
     });
-
-    // ensure that the default state of checkbox is checked
-    //ui->useHostnameCheckBtn->setChecked(true);
 
     // set stylesheet
     //extract the settings and apply to application
@@ -75,8 +66,27 @@ Config::Config(QWidget *parent) :
     }
 
     // Validators
-    QValidator *validator = new QIntValidator(1,65535,this);
-    ui->tcp_port->setValidator(validator);
+
+    // --> Ports
+    portValidator = new QIntValidator(1,65535,this);
+    ui->tcp_port->setValidator(portValidator);
+    ui->localPort->setValidator(portValidator);
+    ui->remotePort->setValidator(portValidator);
+
+    // --> IP addresses
+    QString IpRange = "(?:[0-1]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])";
+    QRegularExpression IpRegex ("^" + IpRange
+                                + "(\\." + IpRange + ")"
+                                + "(\\." + IpRange + ")"
+                                + "(\\." + IpRange + ")$");
+    ipValidator = new QRegularExpressionValidator(IpRegex, this);
+    ui->ipaddr->setValidator(ipValidator);
+    ui->localIPAddr->setValidator(ipValidator);
+    ui->remoteIP->setValidator(ipValidator);
+
+    // set default check for usehostname
+    ui->useHostnameCheckBtn->setChecked(true);
+
 }
 
 Config::~Config()
@@ -121,7 +131,7 @@ QString Config::getOpMode() const
 
 void Config::setvalues()
 {
-
+    int pos{0};
     if(serialActvie)
     {
         serialPort = ui->portCombo->currentText();
@@ -131,67 +141,44 @@ void Config::setvalues()
         parity = ui->parityCombo->currentText();
         flowControl = ui->flowcontrolCombo->currentText();
         operatingMode = ui->modeCombo->currentText();
-        ipaddr = ui->ipaddr->text();
+        tcpIPAddr = ui->ipaddr->text();
         accept();
     }
 
-    if (TCPActive || UDPActive)
-    {
-
-        QString IpRange = "(?:[0-1]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])";
-        QRegularExpression IpRegex ("^" + IpRange
-                                    + "(\\." + IpRange + ")"
-                                    + "(\\." + IpRange + ")"
-                                    + "(\\." + IpRange + ")$");
-        QRegularExpressionValidator *ipValidator = new QRegularExpressionValidator(IpRegex, this);
+    if (TCPActive)
+    {      
         ui->ipaddr->setValidator(ipValidator);
-        int pos{0};
-        QString tmp_ipaddr = ui->ipaddr->text();
+
 
         if (!ui->useHostnameCheckBtn->isChecked())
-
         {
-            if (ipValidator->validate(tmp_ipaddr,pos) !=2 )
-            {
-                QMessageBox::warning(this,"Invalid IP Address", "Please enter a valid IP address! "
-                                                                "Please try again ...",QMessageBox::Ok);
-                ui->ipaddr->setText("");
-                acceptedIP = false;
-
-            }
-            else
-            {
-                acceptedIP = true;
-                ipaddr = tmp_ipaddr;
-                useHostName = 0;
-            }
+            acceptedIP = ipValidation(ui->ipaddr,tcpIPAddr);
+            useHostName =0;
         }
         else
         {
-            ipaddr = ui->hostNameLEdit->text();
-            acceptedIP = true; 
+            tcpIPAddr = ui->hostNameLEdit->text();
+            acceptedIP = true;
             useHostName = 1;
         }
 
         // Validate TCP port entries
-        QString tmp_tcpport =  ui->tcp_port->text();
-        QValidator *portValidator = new QIntValidator(1,65535,this);
-
-        if(portValidator->validate(tmp_tcpport,pos)==2)
-        {
-            tcpPort = tmp_tcpport.toInt();
-            acceptedPort = true;
-        }
-        else
-        {
-            QMessageBox::warning(this,"Invalid Port Address", "Port must be between 1 and 65535! "
-                                                              "Please try again ...",QMessageBox::Ok);
-
-            acceptedPort= false;
-            ui->tcp_port->setText("");
-        }
-
+        acceptedPort= portValidation(ui->tcp_port, tcpPort);
     }
+
+    if(UDPActive){
+        {
+
+
+            if(ipValidation(ui->localIPAddr, udpLocalIPAddr) && ipValidation(ui->remoteIP, udpRemoteIPAddr))
+                acceptedIP = true;
+
+            if(portValidation(ui->localPort, udpLocalPort) && portValidation(ui->remotePort, udpRemotePort))
+                acceptedPort = true;
+        }
+    }
+
+    // check that both IP and Ports are validated and accepted before closing window
     if (acceptedIP && acceptedPort)
         accept();
 }
@@ -212,6 +199,42 @@ void Config::setUdpActive(bool newUdpActive)
 
 }
 
+bool Config::portValidation(QLineEdit *str_port, qint16 &int_port)
+{
+    int pos = 0;
+    QString tmp_port = str_port->text();
+    if(portValidator->validate(tmp_port,pos)==2)
+    {
+        int_port = tmp_port.toInt();
+        return true;
+    }
+    else
+    {
+        QString msg= "Invalid %1 port entered! Port must be between 1 and 65535 ...";
+        QMessageBox::warning(this,"Invalid Port Address", msg.arg(str_port->objectName()),QMessageBox::Ok);
+
+        str_port->clear();
+        return false;
+    }
+}
+
+bool Config::ipValidation(QLineEdit *str_ipaddr, QString &ipaddr)
+{
+    int pos =0;
+    QString tmp_ipaddr = str_ipaddr->text();
+
+    if (ipValidator->validate(tmp_ipaddr,pos) !=2 )
+    {
+        QString msg = "You have entered an invalid %1 IP Address . Please try again";
+        QMessageBox::warning(this,"Invalid IP Address",msg.arg(str_ipaddr->objectName()),QMessageBox::Ok);
+        ui->ipaddr->setText("");
+        return false;
+    }
+
+    ipaddr = str_ipaddr->text();
+    return true;
+}
+
 void Config::hostNameCheckBoxStateChanged(int state)
 {
 
@@ -220,13 +243,56 @@ void Config::hostNameCheckBoxStateChanged(int state)
         ui->ipaddr->setEnabled(false);
         ui->hostNameLEdit->setEnabled(true);
     }
-
     else
     {
         ui->ipaddr->setEnabled(true);
         ui->hostNameLEdit->setEnabled(false);
     }
 
+}
+
+QString Config::getUdpRemoteIPAddr() const
+{
+    return udpRemoteIPAddr;
+}
+
+void Config::setUdpRemoteIPAddr(const QString &newUdpRemoteIPAddr)
+{
+    udpRemoteIPAddr = newUdpRemoteIPAddr;
+    ui->remoteIP->setText(udpRemoteIPAddr);
+}
+
+QString Config::getUdpLocalIPAddr() const
+{
+    return udpLocalIPAddr;
+}
+
+void Config::setUdpLocalIPAddr(const QString &newUdpLocalIPAddr)
+{
+    udpLocalIPAddr = newUdpLocalIPAddr;
+    ui->localIPAddr->setText(udpLocalIPAddr);
+}
+
+quint16 Config::getUdpLocalPort() const
+{
+    return udpLocalPort;
+}
+
+void Config::setUdpLocalPort(quint16 newUdpLocalPort)
+{
+    udpLocalPort = newUdpLocalPort;
+    ui->localPort->setText(QString::number(newUdpLocalPort));
+}
+
+quint16 Config::getUdpRemotePort() const
+{
+    return udpRemotePort;
+}
+
+void Config::setUdpRemotePort(quint16 newUdpRemotePort)
+{
+    udpRemotePort = newUdpRemotePort;
+    ui->remotePort->setText(QString::number(udpRemotePort));
 }
 
 int Config::getUseHostName() const
@@ -237,7 +303,7 @@ int Config::getUseHostName() const
 void Config::setUseHostName(int newUseHostName)
 {
     useHostName = newUseHostName;
-    ui->useHostnameCheckBtn->setChecked(newUseHostName);
+    //ui->useHostnameCheckBtn->setChecked(newUseHostName);
 }
 
 
@@ -249,14 +315,14 @@ void Config::setPort(const QString &newPort)
 
 void Config::setIpaddr(const QString &newIpaddr)
 {
-    ipaddr = newIpaddr;
-    ui->ipaddr->setText(ipaddr);
+    tcpIPAddr = newIpaddr;
+    ui->ipaddr->setText(tcpIPAddr);
 
 }
 
 void Config::setHostname(const QString &hostname)
 {
-    ipaddr = hostname;
+    tcpIPAddr = hostname;
     ui->hostNameLEdit->setText(hostname);
 }
 
@@ -347,7 +413,7 @@ bool Config::getSerialActvie() const
 QString Config::getIpaddr() const
 {
 
-    return ipaddr;
+    return tcpIPAddr;
 }
 
 quint16 Config::getTcpPort() const

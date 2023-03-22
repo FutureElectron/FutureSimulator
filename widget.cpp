@@ -28,7 +28,7 @@ Widget::Widget(QWidget *parent)
     //TCP Server
     server = new QTcpServer(this);
     connect(server, SIGNAL(newConnection()), this, SLOT(serverHasNewConnection()));
-    TCPServerConnection("127.0.0.1", 1234);
+//    TCPServerConnection("127.0.0.1", 1234);
 }
 
 void Widget::signalSlotsConnections()
@@ -383,7 +383,7 @@ void Widget::uiAdjustTable()
 void Widget::serialPortConfiguration()
 {
     // set port name
-    serial.setPortName(port);
+    serial.setPortName(serialPort);
 
     // databits
     if(dataBits == "5 Bits") {
@@ -446,7 +446,7 @@ void Widget::sendCommandLine()
     QByteArray cmd = ui->lineEdit->text().toUtf8();
     if (serialActive) serial.write(cmd,qstrlen(cmd));
     if (udpActive) {
-       QNetworkDatagram datagram(cmd,QHostAddress::Broadcast,1234);
+       QNetworkDatagram datagram(cmd,QHostAddress(udpRemoteIPAddr),udpRemotePort);
        //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
        qInfo() << "Sending: " << cmd << "via UDP";
        UDPSocket.writeDatagram(datagram);
@@ -461,10 +461,9 @@ void Widget::sendCommandLine()
 void Widget::saveSettings()
 {
     QString filename = QCoreApplication::applicationDirPath() + "/settings.ini";
-    qInfo()<<filename;
     QSettings settings(filename, QSettings::Format::IniFormat,this);
 
-    settings.setValue("port",QVariant(port));
+    settings.setValue("port",QVariant(serialPort));
     settings.setValue("baudrate",QVariant(baudRate));
     settings.setValue("stopbits",QVariant(stopBits));
     settings.setValue("parity",QVariant(parity));
@@ -472,8 +471,12 @@ void Widget::saveSettings()
     settings.setValue("opmode", QVariant(opMode));
     settings.setValue("lastConnectionState", QVariant(lastConnectionState));
     settings.setValue("tcpPort", QVariant(tcpPort));
-    settings.setValue("ipadrress", QVariant(ipaddress));
+    settings.setValue("ipadrress", QVariant(tcpIPAddr));
     settings.setValue("useHostAddress", QVariant(useHostName));
+    settings.setValue("udpLocalIPAddress", QVariant(udpLocalIPAddr));
+    settings.setValue("udpRemoteIPAddress", QVariant(udpRemoteIPAddr));
+    settings.setValue("udpLocalPort", QVariant(udpLocalPort));
+    settings.setValue("udpRemotePort", QVariant(udpRemotePort));
 
     int result = settings.status();
     if (result ==QSettings::NoError && !settingsSaved )
@@ -495,17 +498,24 @@ bool Widget::loadSettings()
          return false;
      foreach(auto key,keys)
          returnValue[key]=set.value(key).toString();
-     port = returnValue["port"];
+
+     serialPort = returnValue["port"];
      baudRate = returnValue["baudrate"];
      stopBits = returnValue["stopbits"];
      parity = returnValue["parity"];
      flowControl = returnValue["flowcontrol"];
      opMode = returnValue["opmode"];
+
      lastConnectionState = returnValue["lastConnectionState"];
      tcpPort = returnValue["tcpPort"].toInt();
-     ipaddress = returnValue["ipadrress"];
+     tcpIPAddr = returnValue["ipadrress"];
      useHostName = returnValue["useHostAddress"].toInt();
-     //qInfo()<<lastConnectionState;
+
+     udpLocalPort = returnValue["udpLocalPort"].toInt();
+     udpRemotePort = returnValue["udpRemotePort"].toInt();
+     udpLocalIPAddr = returnValue["udpLocalIPAddress"];
+     udpRemoteIPAddr = returnValue["udpRemoteIPAddress"];
+
      if(opMode=="Anomaly Detection")
      {
          ui->classificationBtn->setEnabled(false);
@@ -703,8 +713,7 @@ void Widget::sendPWMFromSlider()
 
     if (serialActive) serial.write(pwm,qstrlen(pwm));
     if (udpActive) {
-       QNetworkDatagram datagram(pwm,QHostAddress("192.168.100.30"),12345);
-       //QNetworkDatagram datagram(cmd,QHostAddress(ipaddress),tcpPort);
+       QNetworkDatagram datagram(pwm,QHostAddress(udpRemoteIPAddr),udpRemotePort);
        qInfo() << "Sending: " << pwm << "via UDP";
        UDPSocket.writeDatagram(datagram);
     }
@@ -721,8 +730,8 @@ void Widget::showConfigDialog()
     Config *c = new Config(this);
 
     c->setUseHostName(useHostName);
-    if (useHostName ==1) c->setHostname(ipaddress); else c->setIpaddr(ipaddress);
-    c->setPort(port);
+    if (useHostName ==1) c->setHostname(tcpIPAddr); else c->setIpaddr(tcpIPAddr);
+    c->setPort(serialPort);
     c->setBaudRate(baudRate);
     c->setDataBits(dataBits);
     c->setStopBits(stopBits);
@@ -733,25 +742,36 @@ void Widget::showConfigDialog()
     c->setParity(parity);
     c->setTCPPort(QString::number(tcpPort));
     c->setUdpActive(udpActive);
+
+    c->setUdpLocalPort(udpLocalPort);
+    c->setUdpRemotePort(udpRemotePort);
+    c->setUdpLocalIPAddr(udpLocalIPAddr);
+    c->setUdpRemoteIPAddr(udpRemoteIPAddr);
+
     int ret = c->exec();
     if(ret==QDialog::Accepted)
     {
-        port = c->getPort();
+        serialPort = c->getPort();
         baudRate = c->getBaudRate();
         dataBits = c->getDataBits();
         stopBits = c->getStopBits();
         parity = c->getParity();
         flowControl = c->getFlowControl();
         opMode = c->getOpMode();
-        ipaddress = c->getIpaddr();
+        tcpIPAddr = c->getIpaddr();
         tcpPort = c->getTcpPort();
         tcpActive = c->getTCPActive();
-        qInfo()<<"tcp: "<<tcpActive;
-        qInfo() <<"serial: "<<serialActive;
+
+        udpRemotePort = c->getUdpRemotePort();
+        udpLocalPort = c->getUdpLocalPort();
+        udpRemoteIPAddr = c->getUdpRemoteIPAddr();
+        udpLocalIPAddr = c->getUdpLocalIPAddr();
+
         serialActive = c->getSerialActvie();
         tcpActive = c->getTCPActive();
         udpActive = c->getUdpActive();
         useHostName = c->getUseHostName();
+
         //Enable the connect button now
         ui->connectBtn->setEnabled(true);
     }
@@ -901,16 +921,16 @@ void Widget::UDPreadyRead()
     {
         QNetworkDatagram datagram = UDPSocket.receiveDatagram();
         qInfo() << "Received via UDP: " << datagram.data() << " from " << datagram.senderAddress() << ":" << datagram.senderPort();
-        ui->plainTextEdit->appendPlainText(datagram.data());
+        if (enableOutput) ui->plainTextEdit->appendPlainText(datagram.data());
     }
 }
 
 void Widget::TCPConnectionSuccessful()
 {
-    qDebug()<<"Connected to "<<ipaddress<<"on port: "<<tcpPort;
+    qDebug()<<"Connected to "<<tcpIPAddr<<"on port: "<<tcpPort;
     TCPConnected = true;
     QString msg = QString("TCP Connection established to %1"
-                          " and port: %2").arg(ipaddress).arg(TCPSocket.peerPort());
+                          " and port: %2").arg(tcpIPAddr).arg(TCPSocket.peerPort());
     lastConnectionState="TCP";
     uiConnectionSuccessful(msg);
 }
@@ -939,7 +959,7 @@ void Widget::TCPStateChanged(QAbstractSocket::SocketState socketState)
 void Widget::TCPReceiveData()
 {
     //Will only be used if we want to receive a feedback
-    ui->plainTextEdit->setPlainText(TCPSocket.readAll());
+    if (enableOutput) ui->plainTextEdit->setPlainText(TCPSocket.readAll());
 }
 
 void Widget::connectionHandler()
@@ -963,25 +983,25 @@ void Widget::connectionHandler()
             */
             //Listen on the specified port
 
-            TCPConnectToHost(ipaddress,tcpPort);
+            TCPConnectToHost(tcpIPAddr,tcpPort);
             //check for successful connection
 
         }
         else if(udpActive)
         {
             QString msg= "UDP socket is bound to port %1. Heartbeat signals will be sent to host confirm alive";
-            QMessageBox::information(this,"Connection Message", msg);
-            if (!UDPSocket.bind(QHostAddress::LocalHost,1234))
+
+            if (!UDPSocket.bind(QHostAddress(udpLocalIPAddr),udpLocalPort))
             {
                 QMessageBox::information(this,"Connection Error","Failed to bind UDP socket to port. Please try again");
                 UDPConnected =false;
-
             }
             else{
-            uiConnectionSuccessful(msg.arg(UDPSocket.peerPort()));
-            lastConnectionState = "UDP";
-            saveSettings();
-            UDPConnected = true;
+                QMessageBox::information(this,"Connection Message", msg.arg(tcpPort));
+                uiConnectionSuccessful(msg.arg(tcpPort));
+                lastConnectionState = "UDP";
+                saveSettings();
+                UDPConnected = true;
             // to implement heartbeat --- timebased
             }
         }
@@ -995,7 +1015,7 @@ void Widget::connectionHandler()
             {
                 serialConnected = true;
                 QString msg = "Connected to %1   Baudrate:%2 bps Datbits:%6  Parity: %3   Stop Bits: %4   Mode: %5";
-                msg = msg.arg(port,baudRate,parity,stopBits,opMode,dataBits);
+                msg = msg.arg(serialPort,baudRate,parity,stopBits,opMode,dataBits);
                 uiConnectionSuccessful(msg);
                 lastConnectionState = "Serial";
                 saveSettings();

@@ -185,6 +185,7 @@
         <file>16x16/on-button.png</file>
         <file>16x16/off-button.png</file>
         <file>16x16/down-arrow.png</file>
+        <file>16x16/data-transfer.png</file>
     </qresource>
     <qresource prefix="/stylesheets">
         <file>style/activeBtnStyle.css</file>

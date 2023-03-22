@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "qlineedit.h"
+#include "qvalidator.h"
 #include <QDialog>
 //#include <QButtonGroup>
 
@@ -47,11 +49,24 @@ public:
 
     bool getUdpActive() const;
     void setUdpActive(bool newUdpActive);
-
+    bool portValidation(QLineEdit *str_portObj, qint16 &int_port);
+    bool ipValidation(QLineEdit *str_ipaddr, QString &ipaddr);
 
 
     int getUseHostName() const;
     void setUseHostName(int newUseHostName);
+
+    quint16 getUdpRemotePort() const;
+    void setUdpRemotePort(quint16 newUdpRemotePort);
+
+    quint16 getUdpLocalPort() const;
+    void setUdpLocalPort(quint16 newUdpLocalPort);
+
+    QString getUdpLocalIPAddr() const;
+    void setUdpLocalIPAddr(const QString &newUdpLocalIPAddr);
+
+    QString getUdpRemoteIPAddr() const;
+    void setUdpRemoteIPAddr(const QString &newUdpRemoteIPAddr);
 
 public slots:
     void setvalues(void);
@@ -59,6 +74,10 @@ public slots:
 
 private:
     Ui::Config *ui;
+
+    QValidator *portValidator;
+    QRegularExpressionValidator *ipValidator;
+
     QString serialPort;
     QString baudRate;
     QString dataBits;
@@ -66,8 +85,8 @@ private:
     QString parity;
     QString flowControl;
     QString operatingMode;
-    QString ipaddr;
-    quint16 tcpPort;
+    QString tcpIPAddr, udpLocalIPAddr, udpRemoteIPAddr;
+    qint16 tcpPort, udpLocalPort, udpRemotePort;
 //    QButtonGroup *activeConnection;
     bool TCPActive = false;
     bool serialActvie = false;

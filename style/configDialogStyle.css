@@ -42,28 +42,33 @@ QComboBox {
         border-radius:8px;
           }
 
-/*QComboBox::drop-down {
+/* QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
     width: 15px;
     border-left-width: 1px;
     border-left-color: darkgray;
-    border-left-style: solid; /* just a single line */
+    border-left-style: solid;
     image: url(://16x16/down-arrow.png);
-}*/
+} */
 
 QComboBox:on { /* shift the text when the popup opens */
     padding-top: 3px;
     padding-left: 4px;
+    border-radius:0px;
+    border:0px solid;
 }
 
 QComboBox:editable {
     background: white;
+    border-radius:0px;
+    border:0px solid;
 }
 QComboBox QAbstractItemView {
     border: 1px solid darkgray;
     selection-background-color: rgb(4, 107, 90) ;
-
+    border-radius:0px;
+    border:0px solid;
     background-color:white;
 }
 QComboBox:item {
